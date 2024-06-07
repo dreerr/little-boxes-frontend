@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Matter.js mit Earcut</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.14.2/matter.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/poly-decomp@0.2.1/build/decomp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/earcut@2.2.4/dist/earcut.min.js"></script>
+  </head>
+  <body>
+    <script>
+      // Erzeuge eine Matter.js-Engine
+      const { Engine, Render, World, Bodies, Vertices } = Matter;
+
+      const engine = Engine.create();
+      const render = Render.create({
+        element: document.body,
+        engine: engine,
+        options: {
+          width: 800,
+          height: 600,
+          wireframes: true,
+        },
+      });
+
+      // Definiere die Punkte des Polygons (Uhrzeigersinn oder gegen den Uhrzeigersinn)
+      const polygonPoints = [
+        { x: 200, y: 200 },
+        { x: 400, y: 200 },
+        { x: 400, y: 200 },
+        { x: 450, y: 300 },
+        { x: 300, y: 400 },
+        { x: 150, y: 300 },
+        { x: 2, y: 300 },
+        { x: 1, y: 1 },
+      ];
+
+      // Funktion, um die Punkte in ein Array für Earcut zu konvertieren
+      const convertPointsToArray = (points) => {
+        let arr = [];
+        for (let point of points) {
+          arr.push(point.x, point.y);
+        }
+        return arr;
+      };
+
+      const pointsArray = convertPointsToArray(polygonPoints);
+
+      // Trianguliere das Polygon mit Earcut
+      const triangles = earcut(pointsArray);
+
+      // Erzeuge ein Array von Vertices-Objekten für Matter.js
+      let vertices = [];
+      for (let i = 0; i < triangles.length; i += 3) {
+        vertices.push([
+          {
+            x: pointsArray[triangles[i] * 2],
+            y: pointsArray[triangles[i] * 2 + 1],
+          },
+          {
+            x: pointsArray[triangles[i + 1] * 2],
+            y: pointsArray[triangles[i + 1] * 2 + 1],
+          },
+          {
+            x: pointsArray[triangles[i + 2] * 2],
+            y: pointsArray[triangles[i + 2] * 2 + 1],
+          },
+        ]);
+      }
+      console.log([vertices]);
+
+      // Erzeuge den Verbundkörper direkt aus den Vertices
+      const compositeBody = Bodies.fromVertices(300, 200, vertices, {
+        isStatic: true,
+      });
+
+      // Füge den Verbundkörper zur Welt hinzu
+      World.add(engine.world, compositeBody);
+
+      // Starte die Engine und den Renderer
+      Engine.run(engine);
+      Render.run(render);
+    </script>
+  </body>
+</html>
