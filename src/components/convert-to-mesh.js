@@ -17,7 +17,8 @@ import { GeoJSON2SVG } from "geojson2svg";
 export async function createCanvasWithMesh(
   map,
   width = window.innerWidth,
-  height = window.innerHeight
+  height = window.innerHeight,
+  highQuality = false
 ) {
   // bounds
   const bounds = map.getBounds();
@@ -148,7 +149,7 @@ export async function createCanvasWithMesh(
   });
   console.timeEnd("simplify");
   console.time("matter-js");
-  loadMatterJs(canvas, width, height, verticesCollection);
+  loadMatterJs(canvas, width, height, verticesCollection, highQuality);
   console.timeEnd("matter-js");
   return canvas;
 

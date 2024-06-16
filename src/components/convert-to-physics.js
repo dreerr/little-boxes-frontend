@@ -20,7 +20,19 @@ Common.setDecomp(null);
 
 let engine;
 
-export async function loadMatterJs(canvas, width, height, collection) {
+export async function loadMatterJs(
+  canvas,
+  width,
+  height,
+  collection,
+  doDecomp
+) {
+  if (doDecomp) {
+    Common.setDecomp(decomp);
+  } else {
+    Common.setDecomp(null);
+  }
+
   engine = Engine.create({
     gravity: { x: 0, y: 0 },
   });

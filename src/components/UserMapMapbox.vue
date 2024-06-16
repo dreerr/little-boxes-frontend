@@ -1,8 +1,8 @@
 <template>
   <div id="map"></div>
   <div :class="['btm-nav', { disabled: meshActive }]">
-    <button id="switchChoroplethOff" class="active">Off</button>
-    <button id="switchChoroplethHeight">Height</button>
+    <button id="switchChoroplethOff">Off</button>
+    <button id="switchChoroplethHeight" class="active">Height</button>
     <button id="switchChoroplethAge">Age</button>
     <button id="switchChoroplethType">Type</button>
   </div>
@@ -31,7 +31,12 @@ async function toggleMesh() {
   } else {
     if (map.getZoom() > 13) {
       document.querySelector(".absolute")?.remove();
-      const canvas = await createCanvasWithMesh(map);
+      const canvas = await createCanvasWithMesh(
+        map,
+        window.innerWidth,
+        window.innerHeight,
+        map.getZoom() >= 15
+      );
       canvas.classList.add("absolute");
       document.body.appendChild(canvas);
       enableLayer("");
@@ -363,11 +368,9 @@ fetch(`${tile_url}public.data_building.json`)
     }
 
     function addLayers(id, gtype, url) {
-      console.log(id);
       map.addSource(id, layerSource(url));
       var gtypebasic = gtype.replace("Multi", "");
       var gtypes = ["Point", "LineString", "Polygon"];
-
       if (gtypes.includes(gtypebasic)) {
         addOneLayer(id, gtypebasic);
       } else {
@@ -403,7 +406,6 @@ fetch(`${tile_url}public.data_building.json`)
           .then((response) => response.json())
           .then((cityLayer) => {
             let cityTileUrl = cityLayer["tileurl"] + "?" + queryParam;
-            console.log(cityLayer["id"]);
             addLayers(cityLayer["id"], cityLayer["geometrytype"], cityTileUrl);
             onZoom(true);
           });
@@ -475,13 +477,11 @@ fetch(`${tile_url}public.data_building.json`)
 
     enableLayer = (source) => {
       for (const layer of map.getStyle().layers) {
-        console.log(layer);
         if (layer["id"].includes("public.data")) {
           if (layer["source"] === source) {
             map.setLayoutProperty(layer["id"], "visibility", "visible");
           } else {
             map.setLayoutProperty(layer["id"], "visibility", "none");
-            console.log("hide", layer["id"]);
           }
         }
       }
