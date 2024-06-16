@@ -12,12 +12,16 @@ import {
   World,
   Common,
 } from "matter-js";
+import { centroid } from "@turf/turf";
 import decomp from "poly-decomp";
 
 Common.setDecomp(decomp);
+Common.setDecomp(null);
 
-export async function loadMatterJs(canvas, width, height, verticesCollection) {
-  const engine = Engine.create({
+let engine;
+
+export async function loadMatterJs(canvas, width, height, collection) {
+  engine = Engine.create({
     gravity: { x: 0, y: 0 },
   });
   const render = Render.create({
@@ -28,7 +32,7 @@ export async function loadMatterJs(canvas, width, height, verticesCollection) {
       height: height,
       pixelRatio: "auto",
       wireframes: false,
-      background: "transparent", // Set the canvas background to white
+      background: "white", // Set the canvas background to white
     },
   });
 
@@ -84,30 +88,48 @@ export async function loadMatterJs(canvas, width, height, verticesCollection) {
     centroid.y /= vertices.flat().length;
     return centroid;
   }
-
+  const starSvgDataUri =
+    "data:image/svg+xml;charset=UTF-8," +
+    encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+        <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" fill="gold" stroke="black" stroke-width="1"/>
+    </svg>
+`);
+  function encodeSvg(svg) {
+    console.log("svg", svg);
+    return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+  }
   // Create js body from vertices
-  function createBody(vertices) {
-    try {
-      const centroid = calculateCentroid(vertices);
-      console.log("vertices", vertices);
-      console.log("centroid", centroid);
-      const body = Bodies.fromVertices(
-        centroid.x,
-        centroid.y,
-        [vertices.flat()],
-        {
-          render: {
-            fillStyle: "black",
-          },
+  function createBody(item) {
+    const centroid = calculateCentroid(item.vertices);
+    console.log(Vertices.isConvex(item.vertices));
+    const body = Bodies.fromVertices(
+      centroid.x,
+      centroid.y,
+      [item.vertices],
+      {
+        // isStatic: true,
+
+        render: {
+          fillStyle: "rgba(0,0,0,1)",
+          // sprite: {
+          //   texture: starSvgDataUri,
+          // },
         },
-        false,
-        0,
-        0,
-        0
-      );
-      World.add(engine.world, body);
-    } catch (error) {
-      console.error("Failed to create body from vertices:", vertices, error);
+      },
+      false,
+      0.0,
+      0.0,
+      0.0
+    );
+    if (!body) {
+      console.log(body);
+    } else {
+      try {
+        Composite.add(engine.world, body);
+      } catch (error) {
+        // console.error("Failed to create body from vertice", vertices, error);
+      }
     }
   }
 
@@ -119,7 +141,6 @@ export async function loadMatterJs(canvas, width, height, verticesCollection) {
   engine.positionIterations = 6; // Reduced iterations
   engine.velocityIterations = 4; // Reduced iterations
   Engine.update(engine, 1000 / 60);
-  // Events.on(engine, "afterUpdate", applyAttraction);
 
   // Make shapes draggable
   const mouse = Mouse.create(canvas);
@@ -134,23 +155,23 @@ export async function loadMatterJs(canvas, width, height, verticesCollection) {
   });
   World.add(engine.world, mouseConstraint);
   // Process paths in batches
-  for (let i = 0; i < verticesCollection.length; i += 50) {
+  for (let i = 0; i < collection.length; i += 50) {
     // Reduced batch size
-    const batch = verticesCollection.slice(i, i + 50);
-    batch.forEach((vertices) => {
+    const batch = collection.slice(i, i + 50);
+    batch.forEach((item) => {
       try {
-        // const vertices = parsePath(pathData, scale, offsetX, offsetY);
-        if (vertices.length > 2) {
-          createBody(vertices);
+        if (item.vertices.length > 2) {
+          createBody(item);
         } else {
-          console.warn("Insufficient vertices to form a body:", vertices);
+          console.warn("Insufficient vertices to form a body:", item);
         }
       } catch (error) {
-        console.error("Error processing path:", vertices, error);
+        console.error("Error processing path:", item, error);
       }
     });
     await new Promise(requestAnimationFrame); // Yield to allow UI update
   }
+  Events.on(engine, "afterUpdate", applyAttraction);
 }
 
 function applyAttraction() {

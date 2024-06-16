@@ -1,81 +1,65 @@
-import { geoMercator, geoPath, buffer } from "d3";
-import { tile } from "d3-tile";
-import { VectorTile } from "@mapbox/vector-tile";
 import rewind from "@mapbox/geojson-rewind";
-import Pbf from "pbf";
-import { union, toMercator } from "@turf/turf";
+import {
+  union,
+  toMercator,
+  booleanContains,
+  bbox,
+  convex,
+  simplify,
+} from "@turf/turf";
 import earcut from "earcut";
+import { loadMatterJs } from "./convert-to-physics";
+// import simplify from "simplify-geometry";
+import simplifyLeaflet from "simplify-js";
+import { geoMercator, geoPath, buffer } from "d3";
+import { GeoJSON2SVG } from "geojson2svg";
 
 export async function createCanvasWithMesh(
   map,
   width = window.innerWidth,
   height = window.innerHeight
 ) {
+  // bounds
   const bounds = map.getBounds();
+  const [minX, minY, maxX, maxY] = [
+    bounds.getWest(),
+    bounds.getNorth(),
+    bounds.getEast(),
+    bounds.getSouth(),
+  ];
+
+  const mapBbox = [
+    bounds.getWest(),
+    bounds.getSouth(),
+    bounds.getEast(),
+    bounds.getNorth(),
+  ];
+
+  const path = geoPath();
+
+  function project(x, y) {
+    const point = map.project([x, y]);
+    return { x: point.x, y: point.y };
+  }
+  const geoWidth = maxX - minX,
+    geoHeight = maxY - minY;
+  const ratioX = width / geoWidth;
+  const ratioY = height / geoHeight;
+
+  // canvas
   const canvas = document.createElement("canvas");
-
-  const zoom = Math.floor(map.getZoom());
-  const scale = (1 << zoom) * 512;
-
-  const center = map.getCenter();
-  const projection = geoMercator()
-    .center([center.lng, center.lat])
-    .scale(scale / (2 * Math.PI))
-    .translate([width / 2, height / 2]);
-
-  const tileGenerator = tile()
-    .tileSize(1024)
-    .scale(scale)
-    .size([width, height])
-    .translate(projection([0, 0]));
-
   const ctx = canvas.getContext("2d");
   canvas.width = width;
   canvas.height = height;
-  const pixelScale = window.devicePixelRatio;
-  if (pixelScale > 1) {
-    canvas.style.width = canvas.width + "px";
-    canvas.style.height = canvas.height + "px";
-    canvas.width *= pixelScale;
-    canvas.height *= pixelScale;
-    ctx.scale(pixelScale, pixelScale);
-  }
 
-  // get vector tiles from eubucco tiles server
-  console.time("tiles");
-  let tiles = await Promise.all(
-    tileGenerator().map(async (d) => {
-      d.layers = new VectorTile(
-        new Pbf(
-          await buffer(
-            `https://tiles.eubucco.com/public.data_building/${d[2]}/${d[0]}/${d[1]}.pbf?properties=id,id_source,type,type_source,height,age`
-          )
-        )
-      ).layers;
-      console.log(d.layers);
-      return d;
-    })
-  );
-  console.log("number of tiles", tiles.length);
-  console.timeEnd("tiles");
-
-  // create a function to convert vector tiles to geojson
-  function geojson([x, y, z], layer, filter = () => true) {
-    if (!layer) return;
-    const features = [];
-    for (let i = 0; i < layer.length; ++i) {
-      const f = layer.feature(i).toGeoJSON(x, y, z);
-      if (filter.call(null, f, i, features)) features.push(f);
-    }
-    return { type: "FeatureCollection", features };
-  }
+  const mapFeatures = map.querySourceFeatures("public.data_building", {
+    sourceLayer: "public.data_building",
+  });
 
   // create feature collection
   const featureCollection = {
     type: "FeatureCollection",
-    features: tiles.flatMap(
-      (d) => geojson(d, d.layers["public.data_building"]).features
-    ),
+    features: mapFeatures,
   };
 
   // unionize overlapping polygons with the same id
@@ -83,20 +67,26 @@ export async function createCanvasWithMesh(
   featureCollection.features = featureCollection.features
     .sort((a, b) => a.properties.id.localeCompare(b.properties.id))
     .reduce((acc, cur) => {
+      // check if cur is in bound of map
+      if (!isBboxWithinMapBounds(bbox(cur), mapBbox)) {
+        return acc;
+      }
+
+      // // remove holes
+      // if (cur.geometry.type === "MultiPolygon") {
+      //   cur.geometry.coordinates = cur.geometry.coordinates.map((items) => {
+      //     return items.slice(0, 1);
+      //   });
+      // } else {
+      //   cur.geometry.coordinates = [cur.geometry.coordinates[0]];
+      // }
+
       if (acc.length === 0) {
         acc.push(cur);
       } else {
         const last = acc[acc.length - 1];
         if (last.properties.id === cur.properties.id) {
-          // unionize overlapping polygons with the same id
-          // alter the last feature in the accumulator, don't push the current feature
           const unionized = union(last, cur);
-
-          /* rewinding is necessary to ensure that the polygons are in correct order.
-             d3.geoPath: Spherical polygons also require a winding order convention
-             to determine which side of the polygon is the inside: the exterior ring
-             for polygons smaller than a hemisphere must be clockwise, while the
-             exterior ring for polygons larger than a hemisphere must be anticlockwise */
           last.geometry = rewind(unionized.geometry, true);
         } else {
           acc.push(cur);
@@ -106,19 +96,113 @@ export async function createCanvasWithMesh(
     }, []);
   console.timeEnd("unionize");
 
-  console.time("earcut");
+  console.time("simplify");
 
-  const [minX, minY, maxX, maxY] = [
-    bounds.getWest(),
-    bounds.getNorth(),
-    bounds.getEast(),
-    bounds.getSouth(),
-  ];
+  // const collection = featureCollection.features.map((d) => {
+  //   // const hull = simplify(convex(d), { tolerance: 0.0001, highQuality: false });
+  //   const bb = bbox(d);
+  //   // console.log("bb", bb, "hull", hull);
+  //   let vertices = d.geometry.coordinates[0].map((p) => project(p[0], p[1]));
+  //   // console.log(hull.geometry.coordinates[0]);
+  //   // console.log(vertices);
+  //   let bb1 = project(bb[0], bb[3]);
+  //   let bb2 = project(bb[2], bb[1]);
+  //   let w = bb2.x - bb1.x;
+  //   let h = bb2.y - bb1.y;
+  //   // const converter = new GeoJSON2SVG({
+  //   //   coordinateConverter: function (e) {
+  //   //     const a = map.project([e[1], e[0]]);
+  //   //     return [a.x, a.y];
+  //   //   },
+  //   //   mapExtentFromGeojson: true,
+  //   //   viewportSize: { width: w, height: h },
+  //   // });
+  //   // let svg =
+  //   //   `<svg xmlns="http://www.w3.org/2000/svg">` +
+  //   //   converter.convert(d).join("") +
+  //   //   "</svg>";
+  //   return { vertices };
+  // });
+  // console.timeEnd("simplify");
+  // loadMatterJs(canvas, width, height, collection);
+  // return canvas;
 
-  const geoWidth = maxX - minX,
-    geoHeight = maxY - minY;
-  const ratioX = width / geoWidth;
-  const ratioY = height / geoHeight;
+  console.time("simplify");
+  const verticesCollection = featureCollection.features.flatMap((d) => {
+    d;
+    let items =
+      d.geometry.type === "Polygon"
+        ? [d.geometry.coordinates]
+        : d.geometry.coordinates;
+    return items.map((coordinates) => {
+      let vertices = coordinates[0].map((d) => {
+        return {
+          x: (d[0] - minX) * ratioX,
+          y: (d[1] - minY) * ratioY,
+        };
+      });
+
+      return { vertices };
+      // return simplifyLeaflet(vertices, 3);
+    });
+  });
+  console.timeEnd("simplify");
+  console.time("matter-js");
+  loadMatterJs(canvas, width, height, verticesCollection);
+  console.timeEnd("matter-js");
+  return canvas;
+
+  // const verticesCollection = featureCollection.features.flatMap((d) => {
+  //   // Make a MultiPolygon into a Polygon
+  //   let geometryCoordinates =
+  //     d.geometry.type === "Polygon"
+  //       ? [d.geometry.coordinates]
+  //       : d.geometry.coordinates;
+  //   return geometryCoordinates.map((coordinates) => {
+  //     const simple = coordinates.map((coords) => simplify(coords, 0.000001));
+  //     console.log("simple", simple.flat().length, coordinates.flat().length);
+  //     const data = earcut.flatten(simple);
+  //     const result = earcut(data.vertices, data.holes, data.dimensions);
+
+  //     let vertices = [];
+  //     for (let i = 0; i < result.length; i += 3) {
+  //       vertices.push([
+  //         {
+  //           x: (data.vertices[result[i] * data.dimensions] - minX) * ratioX,
+  //           y: (data.vertices[result[i] * data.dimensions + 1] - minY) * ratioY,
+  //         },
+  //         {
+  //           x: (data.vertices[result[i + 1] * data.dimensions] - minX) * ratioX,
+  //           y:
+  //             (data.vertices[result[i + 1] * data.dimensions + 1] - minY) *
+  //             ratioY,
+  //         },
+  //         {
+  //           x: (data.vertices[result[i + 2] * data.dimensions] - minX) * ratioX,
+  //           y:
+  //             (data.vertices[result[i + 2] * data.dimensions + 1] - minY) *
+  //             ratioY,
+  //         },
+  //         {
+  //           x: (data.vertices[result[i] * data.dimensions] - minX) * ratioX,
+  //           y: (data.vertices[result[i] * data.dimensions + 1] - minY) * ratioY,
+  //         },
+  //       ]);
+  //     }
+  //     return vertices;
+  //   });
+  // });
+  // loadMatterJs(canvas, width, height, verticesCollection);
+  // return canvas;
+
+  const pixelScale = window.devicePixelRatio;
+  if (pixelScale > 1) {
+    canvas.style.width = canvas.width + "px";
+    canvas.style.height = canvas.height + "px";
+    canvas.width *= pixelScale;
+    canvas.height *= pixelScale;
+    ctx.scale(pixelScale, pixelScale);
+  }
 
   function drawPoly(rings, color, fill) {
     ctx.beginPath();
@@ -143,10 +227,9 @@ export async function createCanvasWithMesh(
     if (fill && fill !== true) ctx.fill("evenodd");
   }
   featureCollection.features.forEach((d) => {
-    const dMercator = toMercator(d);
-    const data = earcut.flatten(d.geometry.coordinates);
+    const simple = simplify(d.geometry.coordinates, 1);
+    const data = earcut.flatten(simple);
     const result = earcut(data.vertices, data.holes, data.dimensions);
-
     const triangles = [];
     for (let i = 0; i < result.length; i++) {
       const index = result[i];
@@ -157,7 +240,6 @@ export async function createCanvasWithMesh(
     }
 
     ctx.lineJoin = "round";
-
     for (let i = 0; triangles && i < triangles.length; i += 3) {
       drawPoly(
         triangles.slice(i, i + 3),
@@ -169,4 +251,20 @@ export async function createCanvasWithMesh(
   console.timeEnd("earcut");
 
   return canvas;
+}
+function isBboxWithinMapBounds(featureBbox, mapBbox) {
+  const [featureMinX, featureMinY, featureMaxX, featureMaxY] = featureBbox;
+  const [mapMinX, mapMinY, mapMaxX, mapMaxY] = mapBbox;
+  return !(
+    featureMaxX < mapMinX ||
+    featureMinX > mapMaxX ||
+    featureMaxY < mapMinY ||
+    featureMinY > mapMaxY
+  );
+  // return (
+  //   featureMinX >= mapMinX &&
+  //   featureMinY >= mapMinY &&
+  //   featureMaxX <= mapMaxX &&
+  //   featureMaxY <= mapMaxY
+  // );
 }

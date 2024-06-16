@@ -1,109 +1,72 @@
 <template>
-  <div id="map">
-    <div class="btm-nav">
-      <button @click="process">Create mesh</button>
-      <button id="switchChoroplethOff">
-        <div class="text-xl">Off</div>
-      </button>
-      <button id="switchChoroplethHeight" class="active">
-        <div class="text-xl">Height</div>
-      </button>
-      <button id="switchChoroplethAge">
-        <div class="text-xl">Age</div>
-      </button>
-      <button id="switchChoroplethType">
-        <div class="text-xl">Type</div>
-      </button>
-    </div>
+  <div id="map"></div>
+  <div :class="['btm-nav', { disabled: meshActive }]">
+    <button id="switchChoroplethOff" class="active">Off</button>
+    <button id="switchChoroplethHeight">Height</button>
+    <button id="switchChoroplethAge">Age</button>
+    <button id="switchChoroplethType">Type</button>
   </div>
-
   <div id="legend"></div>
-
-  <div id="toast" class="toast toast-center toast-top w-full flex pt-16">
-    <div class="alert alert-info justify-center">
-      <div class="justify-center">
-        <p class="justify-center">
-          Here you can explore the data. Depending on your Zoom level you will
-          see the Countries, Region, Cities or Buildings!
-        </p>
-      </div>
-    </div>
-  </div>
+  <button
+    id="toggleMesh"
+    @click="toggleMesh"
+    title="Change view"
+    :class="{ disabled: currentZoomRef < 13, active: meshActive }"
+  ></button>
 </template>
 
 <script setup>
-import maplibregl from "maplibre-gl";
+import mapboxgl from "mapbox-gl";
 import { createCanvasWithMesh } from "./convert-to-mesh.js";
-import "maplibre-gl/dist/maplibre-gl.css";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { ref } from "vue";
+
+let meshActive = ref(false);
+
+async function toggleMesh() {
+  if (meshActive.value) {
+    document.querySelector(".absolute")?.remove();
+    enableLayer("public.data_building");
+    meshActive.value = false;
+  } else {
+    if (map.getZoom() > 13) {
+      document.querySelector(".absolute")?.remove();
+      const canvas = await createCanvasWithMesh(map);
+      canvas.classList.add("absolute");
+      document.body.appendChild(canvas);
+      enableLayer("");
+      meshActive.value = true;
+    } else {
+      alert("Please zoom in to see the mesh");
+    }
+  }
+}
+
+const currentZoomRef = ref(99);
+
+mapboxgl.accessToken =
+  "pk.eyJ1IjoiZHJlZXJyIiwiYSI6ImNseGRxbGRuMzA5NWoycnNjeHQ3aHFsYTMifQ.qz0_kP4890CI-8z_EbCs5A";
+
 let map;
 let paints;
+let enableLayer;
 let mapcolor = "white";
 var currentLayer = null;
 let choroplethChoice = "height";
 const tile_url = "https://tiles.eubucco.com/";
-
-async function process() {
-  const canvas = await createCanvasWithMesh(map);
-  canvas.classList.add("absolute");
-  document.body.appendChild(canvas);
-}
-setTimeout(function () {
-  document.getElementById("toast").remove();
-}, 10_000);
 
 fetch(`${tile_url}public.data_building.json`)
   .then((response) => response.json())
   .then((layer) => {
     let mapConfig = {
       container: "map",
-
       bounds: layer["bounds"],
       hash: true,
-      style: {
-        version: 8,
-        sources: {
-          "open-street": {
-            type: "raster",
-            tiles: [
-              "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-              "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-              "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-              "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-            ],
-          },
-          "carto-dark": {
-            type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-              "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-              "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-              "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-            ],
-          },
-          "carto-light": {
-            type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
-              "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
-              "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
-              "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png",
-            ],
-          },
-          wikimedia: {
-            type: "raster",
-            tiles: ["https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png"],
-          },
-        },
-        layers: [
-          {
-            id: "carto-layer",
-            source: "carto-light",
-            type: "raster",
-            minzoom: 0,
-            maxzoom: 22,
-          },
-        ],
-      },
+      pitchWithRotate: false,
+      dragRotate: false,
+      touchZoomRotate: false,
+      style: "mapbox://styles/dreerr/clxg9jyw5006l01pdel8n6kfy",
+      // style: "mapbox://styles/dreerr/clxdqvrek001h01r2fejcazs9",
     };
 
     var painttypes = {
@@ -295,12 +258,16 @@ fetch(`${tile_url}public.data_building.json`)
     }
 
     function resetLayers() {
-      map.removeLayer("public.data_building.Point.circle");
-      map.removeLayer("public.data_building.Polygon.fill");
-      map.removeLayer("public.data_building.LineString.line");
-      map.removeLayer("public.data_building.Polygon.line");
+      try {
+        map.removeLayer("public.data_building.Point.circle");
+        map.removeLayer("public.data_building.Polygon.fill");
+        map.removeLayer("public.data_building.LineString.line");
+        map.removeLayer("public.data_building.Polygon.line");
+      } catch (error) {
+        // pass
+      }
       addOneLayer("public.data_building", "Polygon");
-      // updateLegend();
+      updateLegend();
     }
 
     document.getElementById("switchChoroplethOff").onclick = function () {
@@ -372,7 +339,7 @@ fetch(`${tile_url}public.data_building.json`)
 
     function addLayerBehavior(id) {
       map.on("click", id, function (e) {
-        new maplibregl.Popup()
+        new mapboxgl.Popup()
           .setLngLat(e.lngLat)
           .setHTML(featureHtml(e.features[0]))
           .addTo(map);
@@ -396,6 +363,7 @@ fetch(`${tile_url}public.data_building.json`)
     }
 
     function addLayers(id, gtype, url) {
+      console.log(id);
       map.addSource(id, layerSource(url));
       var gtypebasic = gtype.replace("Multi", "");
       var gtypes = ["Point", "LineString", "Polygon"];
@@ -410,13 +378,15 @@ fetch(`${tile_url}public.data_building.json`)
     }
 
     function mountMap(dark = true) {
-      if (dark === true) {
-        mapConfig["style"]["layers"][0]["source"] = "carto-dark";
-      } else {
-        mapConfig["style"]["layers"][0]["source"] = "carto-light";
-      }
-      map = new maplibregl.Map(mapConfig);
-      map.addControl(new maplibregl.NavigationControl());
+      map = new mapboxgl.Map(mapConfig);
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
+
+      // disable map rotation using right click + drag
+      map.dragRotate.disable();
+
+      // disable map rotation using touch rotation gesture
+      map.touchZoomRotate.disableRotation();
+
       map.on("load", function () {
         updateLegend();
 
@@ -433,6 +403,7 @@ fetch(`${tile_url}public.data_building.json`)
           .then((response) => response.json())
           .then((cityLayer) => {
             let cityTileUrl = cityLayer["tileurl"] + "?" + queryParam;
+            console.log(cityLayer["id"]);
             addLayers(cityLayer["id"], cityLayer["geometrytype"], cityTileUrl);
             onZoom(true);
           });
@@ -502,44 +473,46 @@ fetch(`${tile_url}public.data_building.json`)
       mountMap(dark);
     });
 
-    function enableLayer(source) {
+    enableLayer = (source) => {
       for (const layer of map.getStyle().layers) {
+        console.log(layer);
         if (layer["id"].includes("public.data")) {
           if (layer["source"] === source) {
             map.setLayoutProperty(layer["id"], "visibility", "visible");
           } else {
             map.setLayoutProperty(layer["id"], "visibility", "none");
+            console.log("hide", layer["id"]);
           }
         }
       }
-    }
+    };
 
     function onZoom(force = false) {
+      currentZoomRef.value = map.getZoom();
       const currentZoom = map.getZoom();
-      console.log(map.getZoom());
-      console.log(map.getBounds());
+
       if (force) {
         currentLayer = null;
       }
 
-      if (currentZoom > 14) {
+      if (currentZoom > 13) {
         if (currentLayer !== "public.data_building") {
           enableLayer("public.data_building");
           // document.querySelector(".mapboxgl-popup").remove();
           currentLayer = "public.data_building";
         }
-      } else if (currentZoom > 8) {
-        if (currentLayer !== "public.data_city") {
-          enableLayer("public.data_city");
-          // document.querySelector(".mapboxgl-popup").remove();
-          currentLayer = "public.data_city";
-        }
-      } else if (currentZoom > 6) {
-        if (currentLayer !== "public.data_region") {
-          enableLayer("public.data_region");
-          // document.querySelector(".mapboxgl-popup").remove();
-          currentLayer = "public.data_region";
-        }
+        // } else if (currentZoom > 8) {
+        //   if (currentLayer !== "public.data_city") {
+        //     enableLayer("public.data_city");
+        //     // document.querySelector(".mapboxgl-popup").remove();
+        //     currentLayer = "public.data_city";
+        //   }
+        // } else if (currentZoom > 6) {
+        //   if (currentLayer !== "public.data_region") {
+        //     enableLayer("public.data_region");
+        //     // document.querySelector(".mapboxgl-popup").remove();
+        //     currentLayer = "public.data_region";
+        //   }
       } else {
         if (currentLayer !== "public.data_country_view") {
           enableLayer("public.data_country_view");
@@ -555,7 +528,7 @@ fetch(`${tile_url}public.data_building.json`)
   });
 </script>
 
-<style>
+<style lang="scss">
 #map,
 .absolute {
   position: absolute;
@@ -566,143 +539,83 @@ fetch(`${tile_url}public.data_building.json`)
 }
 #legend {
   position: absolute;
-  bottom: 0;
-  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 1em;
+  left: auto;
+  text-align: center;
+  div {
+    padding: 0.25em;
+  }
 }
 
 .btm-nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 2em;
+  right: 1em;
   display: flex;
-  width: 100%;
-  flex-direction: row;
+  flex-direction: column;
+  gap: 0.25em;
   align-items: center;
   justify-content: space-around;
-  height: 4rem;
-  --tw-bg-opacity: 1;
-  background-color: hsl(var(--b1) / var(--tw-bg-opacity));
-  color: currentColor;
-  z-index: 100;
-}
-
-.btm-nav > * {
-  position: relative;
-  display: flex;
-  height: 100%;
-  flex-basis: 100%;
-  flex-direction: column;
-  gap: 0.25rem;
-  border-color: currentColor;
-}
-
-.btm-nav > *,
-.btn {
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn {
-  display: inline-flex;
-  flex-shrink: 0;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  user-select: none;
-  flex-wrap: wrap;
-  border-color: transparent;
-  border-color: hsl(var(--n) / var(--tw-border-opacity));
-  text-align: center;
-  transition-property: color, background-color, border-color, fill, stroke,
-    opacity, box-shadow, transform, filter, -webkit-text-decoration-color,
-    -webkit-backdrop-filter;
-  transition-property: color, background-color, border-color,
-    text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter,
-    backdrop-filter;
-  transition-property: color, background-color, border-color,
-    text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter,
-    backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;
-  transition-duration: 0.2s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: var(--rounded-btn, 0.5rem);
-  height: 3rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  line-height: 1em;
-  min-height: 3rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  text-transform: var(--btn-text-case, uppercase);
-  -webkit-text-decoration-line: none;
-  text-decoration-line: none;
-  border-width: var(--border-btn, 1px);
-  -webkit-animation: button-pop var(--animation-btn, 0.25s) ease-out;
-  animation: button-pop var(--animation-btn, 0.25s) ease-out;
-  --tw-border-opacity: 1;
-  --tw-bg-opacity: 1;
-  background-color: hsl(var(--n) / var(--tw-bg-opacity));
-  --tw-text-opacity: 1;
-  color: hsl(var(--nc) / var(--tw-text-opacity));
-}
-
-.btn-disabled,
-.btn[disabled] {
-  pointer-events: none;
-}
-
-.btn-square {
-  height: 3rem;
-  width: 3rem;
-  padding: 0;
-}
-
-.btn.loading,
-.btn.loading:hover {
-  pointer-events: none;
-}
-
-.btn.loading:before {
-  margin-right: 0.5rem;
-  height: 1rem;
-  width: 1rem;
-  border-radius: 9999px;
-  border-width: 2px;
-  -webkit-animation: spin 2s linear infinite;
-  animation: spin 2s linear infinite;
-  content: "";
-  border-top-color: transparent;
-  border-left-color: transparent;
-  border-bottom-color: initial;
-  border-right-color: initial;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .btn.loading:before {
-    -webkit-animation: spin 10s linear infinite;
-    animation: spin 10s linear infinite;
+  z-index: 1000;
+  outline: none;
+  border: none;
+  border-radius: 3px;
+  transition: opacity 0.3s;
+  &.disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+  button {
+    background-color: #fff;
+    color: inherit;
+    border: none;
+    padding: 0.2em;
+    font: inherit;
+    cursor: pointer;
+    outline: inherit;
+    width: 100%;
+    box-shadow: 0 0 0.5em rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    &.active {
+      background-color: rgb(220, 0, 0);
+      color: white;
+    }
   }
 }
 
-@-webkit-keyframes spin {
-  0% {
-    transform: rotate(0deg);
+#toggleMesh {
+  position: fixed;
+  bottom: 3em;
+  left: calc(50% - 2em);
+  width: 4em;
+  height: 4em;
+  border-radius: 50%;
+  border: 2px solid rgb(220, 0, 0);
+  background-color: transparent;
+  z-index: 1000;
+  transition: all 0.7s;
+  &.disabled {
+    filter: saturate(0);
+    opacity: 0.5;
   }
-
-  to {
-    transform: rotate(1turn);
+  &::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    content: "";
+    border-radius: 50%;
+    width: 3em;
+    height: 3em;
+    transition: all 0.3s;
+    background-color: rgb(220, 0, 0);
   }
-}
-
-.btn-group > input[type="radio"].btn {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-}
-
-.btn-group > input[type="radio"].btn:before {
-  content: attr(data-title);
+  &.active::after {
+    border-radius: 4px;
+    width: 1.8em;
+    height: 1.8em;
+  }
 }
 </style>
