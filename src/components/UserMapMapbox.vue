@@ -26,7 +26,6 @@ let meshActive = ref(false);
 async function toggleMesh() {
   if (meshActive.value) {
     document.querySelector(".absolute")?.remove();
-    enableLayer("public.data_building");
     meshActive.value = false;
   } else {
     if (map.getZoom() > 13) {
@@ -39,7 +38,6 @@ async function toggleMesh() {
       );
       canvas.classList.add("absolute");
       document.body.appendChild(canvas);
-      enableLayer("");
       meshActive.value = true;
     } else {
       alert("Please zoom in to see the mesh");
@@ -449,8 +447,8 @@ fetch(`${tile_url}public.data_building.json`)
     runColorMode((isDarkMode) => {
       let dark;
       if (isDarkMode) {
-        mapcolor = "white";
-        dark = true;
+        mapcolor = "black";
+        dark = false;
       } else {
         mapcolor = "black";
         dark = false;
