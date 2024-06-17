@@ -45,7 +45,7 @@ async function toggleMesh() {
   }
 }
 
-const currentZoomRef = ref(99);
+const currentZoomRef = ref(0);
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiZHJlZXJyIiwiYSI6ImNseGRxbGRuMzA5NWoycnNjeHQ3aHFsYTMifQ.qz0_kP4890CI-8z_EbCs5A";
