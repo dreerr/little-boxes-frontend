@@ -9,10 +9,7 @@ import {
 } from "@turf/turf";
 import earcut from "earcut";
 import { loadMatterJs } from "./convert-to-physics";
-// import simplify from "simplify-geometry";
 import simplifyLeaflet from "simplify-js";
-import { geoMercator, geoPath, buffer } from "d3";
-import { GeoJSON2SVG } from "geojson2svg";
 
 export async function createCanvasWithMesh(
   map,
@@ -36,12 +33,6 @@ export async function createCanvasWithMesh(
     bounds.getNorth(),
   ];
 
-  const path = geoPath();
-
-  function project(x, y) {
-    const point = map.project([x, y]);
-    return { x: point.x, y: point.y };
-  }
   const geoWidth = maxX - minX,
     geoHeight = maxY - minY;
   const ratioX = width / geoWidth;

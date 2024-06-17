@@ -1,12 +1,12 @@
 <template>
-  <div id="map"></div>
-  <div :class="['btm-nav', { disabled: meshActive }]">
+  <div id="map" :class="{ disabled: meshActive }"></div>
+  <div :class="['btm-nav', { disabled: meshActive || currentZoomRef < 13 }]">
     <button id="switchChoroplethOff">Off</button>
     <button id="switchChoroplethHeight" class="active">Height</button>
     <button id="switchChoroplethAge">Age</button>
     <button id="switchChoroplethType">Type</button>
   </div>
-  <div id="legend"></div>
+  <div id="legend" :class="{ disabled: currentZoomRef < 13 }"></div>
   <button
     id="toggleMesh"
     @click="toggleMesh"
@@ -67,7 +67,7 @@ fetch(`${tile_url}public.data_building.json`)
       hash: true,
       pitchWithRotate: false,
       dragRotate: false,
-      touchZoomRotate: false,
+      touchZoomRotate: true,
       style: "mapbox://styles/dreerr/clxg9jyw5006l01pdel8n6kfy",
       // style: "mapbox://styles/dreerr/clxdqvrek001h01r2fejcazs9",
     };
@@ -534,6 +534,11 @@ fetch(`${tile_url}public.data_building.json`)
   bottom: 0;
   left: 0;
   right: 0;
+  transition: opacity 0.3s;
+  &.disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 #legend {
   position: absolute;
@@ -544,6 +549,11 @@ fetch(`${tile_url}public.data_building.json`)
   text-align: center;
   div {
     padding: 0.25em;
+  }
+  transition: opacity 0.3s;
+  &.disabled {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 
