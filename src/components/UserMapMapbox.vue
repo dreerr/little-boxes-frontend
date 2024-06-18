@@ -42,7 +42,7 @@ async function toggleMesh() {
       document.body.appendChild(canvas);
       meshActive.value = true;
     } else {
-      alert("Please zoom in to see the mesh");
+      alert("Please zoom in to start");
     }
   }
 }
@@ -438,11 +438,8 @@ fetch(`${tile_url}public.data_building.json`)
       if (!window.matchMedia) {
         return;
       }
-
       const query = window.matchMedia("(prefers-color-scheme: dark)");
-
       fn(query.matches);
-
       query.addEventListener("change", (event) => fn(event.matches));
     };
 
@@ -455,7 +452,6 @@ fetch(`${tile_url}public.data_building.json`)
         mapcolor = "black";
         dark = false;
       }
-
       paints = {
         circle: {
           "circle-color": mapcolor,
@@ -471,7 +467,6 @@ fetch(`${tile_url}public.data_building.json`)
           "fill-opacity": 0,
         },
       };
-
       mountMap(dark);
     });
 
