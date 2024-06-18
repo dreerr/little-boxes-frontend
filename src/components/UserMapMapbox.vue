@@ -1,5 +1,5 @@
 <template>
-  <div id="map" :class="{ disabled: meshActive }"></div>
+  <div id="map" :class="['mapboxgl-map', { disabled: meshActive }]"></div>
   <div :class="['btm-nav', { disabled: meshActive || currentZoomRef < 13 }]">
     <button id="switchChoroplethOff">Off</button>
     <button id="switchChoroplethHeight" class="active">Height</button>
@@ -12,7 +12,9 @@
     @click="toggleMesh"
     title="Change view"
     :class="{ disabled: currentZoomRef < 13, active: meshActive }"
-  ></button>
+  >
+    <span>zoom in to start</span>
+  </button>
 </template>
 
 <script setup>
@@ -594,20 +596,19 @@ fetch(`${tile_url}public.data_building.json`)
 }
 
 #toggleMesh {
+  font-size: 1em;
   position: fixed;
-  bottom: 3em;
-  left: calc(50% - 2em);
-  width: 4em;
-  height: 4em;
-  border-radius: 50%;
+  bottom: 2em;
+  left: calc(50%);
+  transform: translateX(-50%);
+  width: 2.7em;
+  height: 2.7em;
+  border-radius: 99px;
   border: 2px solid rgb(220, 0, 0);
-  background-color: transparent;
   z-index: 1000;
+  background-color: transparent;
   transition: all 0.7s;
-  &.disabled {
-    filter: saturate(0);
-    opacity: 0.5;
-  }
+  cursor: pointer;
   &::after {
     position: absolute;
     top: 50%;
@@ -615,15 +616,43 @@ fetch(`${tile_url}public.data_building.json`)
     transform: translate(-50%, -50%);
     content: "";
     border-radius: 50%;
-    width: 3em;
-    height: 3em;
+    width: 2em;
+    height: 2em;
     transition: all 0.3s;
     background-color: rgb(220, 0, 0);
   }
+
+  span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: all 0.3s;
+    opacity: 0;
+    line-height: 1;
+    font-size: 0.8rem;
+    color: rgb(73, 73, 73);
+  }
+  &.disabled {
+    filter: saturate(0);
+    border-color: rgb(128, 128, 128);
+    background-color: rgba(255, 255, 255, 0.5);
+    width: 8em;
+    &::after {
+      opacity: 0;
+      width: 1em;
+      height: 1em;
+    }
+    span {
+      opacity: 1;
+    }
+  }
   &.active::after {
     border-radius: 4px;
-    width: 1.8em;
-    height: 1.8em;
+    width: 1.2em;
+    height: 1.2em;
   }
 }
 </style>
