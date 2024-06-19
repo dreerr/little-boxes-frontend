@@ -1,17 +1,21 @@
 <template>
-  <div id="map" :class="['mapboxgl-map', { disabled: meshActive }]"></div>
-  <div :class="['btm-nav', { disabled: meshActive || currentZoomRef < 13 }]">
-    <button id="switchChoroplethOff">Off</button>
-    <button id="switchChoroplethHeight" class="active">Height</button>
-    <button id="switchChoroplethAge">Age</button>
-    <button id="switchChoroplethType">Type</button>
+  <div id="map" :class="['mapboxgl-map', { disabled: isMeshActive }]"></div>
+  <div :class="['btm-nav', { disabled: isMeshActive || currentZoom < 13 }]">
+    <button
+      v-for="value in ['Off', 'Height', 'Age', 'Type']"
+      :key="value"
+      @click="switchChoropleth(value.toLowerCase())"
+      :class="{ active: choroplethChoice === value.toLowerCase() }"
+    >
+      {{ value }}
+    </button>
   </div>
-  <div id="legend" :class="{ disabled: currentZoomRef < 13 }"></div>
+  <div id="legend" :class="{ disabled: currentZoom < 13 }"></div>
   <button
     id="toggleMesh"
     @click="toggleMesh"
     title="Change view"
-    :class="{ disabled: currentZoomRef < 13, active: meshActive }"
+    :class="{ disabled: currentZoom < 13, active: isMeshActive }"
   >
     <span>zoom in to start</span>
   </button>
@@ -22,13 +26,23 @@ import mapboxgl from "mapbox-gl";
 import { createCanvasWithMesh } from "./convert-to-mesh.js";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { ref } from "vue";
+import { painttypes, choropleth } from "../constants.js";
 
-let meshActive = ref(false);
+let isMeshActive = ref(false);
+const currentZoom = ref(0);
+const choroplethChoice = ref("height");
+let map;
+let paints;
+let enableLayer;
+let mapcolor = "white";
+let currentLayer = null;
+let switchChoropleth; // init here, because we need to use it in the template
+const tile_url = "https://tiles.eubucco.com/";
 
 async function toggleMesh() {
-  if (meshActive.value) {
+  if (isMeshActive.value) {
     document.querySelector(".absolute")?.remove();
-    meshActive.value = false;
+    isMeshActive.value = false;
   } else {
     if (map.getZoom() > 13) {
       document.querySelector(".absolute")?.remove();
@@ -40,47 +54,27 @@ async function toggleMesh() {
       );
       canvas.classList.add("absolute");
       document.body.appendChild(canvas);
-      meshActive.value = true;
+      isMeshActive.value = true;
     } else {
       alert("Please zoom in to start");
     }
   }
 }
 
-const currentZoomRef = ref(0);
-
 mapboxgl.accessToken =
   "pk.eyJ1IjoiZHJlZXJyIiwiYSI6ImNseGRxbGRuMzA5NWoycnNjeHQ3aHFsYTMifQ.qz0_kP4890CI-8z_EbCs5A";
-
-let map;
-let paints;
-let enableLayer;
-let mapcolor = "white";
-var currentLayer = null;
-let choroplethChoice = "height";
-const tile_url = "https://tiles.eubucco.com/";
 
 fetch(`${tile_url}public.data_building.json`)
   .then((response) => response.json())
   .then((layer) => {
     let mapConfig = {
       container: "map",
-      bounds: layer["bounds"],
+      maxBounds: layer["bounds"],
       hash: true,
       pitchWithRotate: false,
       dragRotate: false,
       touchZoomRotate: true,
       style: "mapbox://styles/dreerr/clxg9jyw5006l01pdel8n6kfy",
-      // style: "mapbox://styles/dreerr/clxdqvrek001h01r2fejcazs9",
-    };
-
-    var painttypes = {
-      Point: "circle",
-      MultiPoint: "circle",
-      LineString: "line",
-      MultiLineString: "line",
-      Polygon: "fill",
-      MultiPolygon: "fill",
     };
 
     function layerSource(tileurl) {
@@ -95,73 +89,6 @@ fetch(`${tile_url}public.data_building.json`)
     function layerId(id, gtype, paint) {
       return id + "." + gtype + "." + paint;
     }
-
-    const heightChoropleth = {
-      "fill-color": [
-        "interpolate",
-        ["linear"],
-        ["get", "height"],
-        0,
-        "#5e4ea6",
-        5,
-        "#2f89be",
-        10,
-        "#62c3a5",
-        15,
-        "#e6f697",
-        20,
-        "#fce08c",
-        25,
-        "#f46d45",
-        50,
-        "#d3404a",
-        1000,
-        "#a00042",
-      ],
-      "fill-opacity": 0.75,
-    };
-
-    const ageChoropleth = {
-      "fill-color": [
-        "interpolate",
-        ["linear"],
-        ["get", "age"],
-        0,
-        "#5e4ea6",
-        1900,
-        "#2f89be",
-        1945,
-        "#62c3a5",
-        1960,
-        "#addda3",
-        1970,
-        "#e6f697",
-        1980,
-        "#ffffba",
-        1990,
-        "#fce08c",
-        2000,
-        "#f46d45",
-        2010,
-        "#d3404a",
-        2030,
-        "#a00042",
-      ],
-      "fill-opacity": 0.75,
-    };
-
-    const typeChoropleth = {
-      "fill-color": [
-        "match",
-        ["get", "type"],
-        "RE",
-        "green",
-        "NR",
-        "red",
-        "white",
-      ],
-      "fill-opacity": 0.75,
-    };
 
     function layerConfig(id, gtype, paint) {
       let config = {
@@ -182,12 +109,8 @@ fetch(`${tile_url}public.data_building.json`)
         gtype === "Polygon" &&
         paint === "fill"
       ) {
-        if (choroplethChoice === "height") {
-          config["paint"] = heightChoropleth;
-        } else if (choroplethChoice === "type") {
-          config["paint"] = typeChoropleth;
-        } else if (choroplethChoice === "age") {
-          config["paint"] = ageChoropleth;
+        if (["height", "type", "age"].includes(choroplethChoice.value)) {
+          config["paint"] = choropleth[choroplethChoice.value];
         } else {
           config["paint"] = paints[paint];
         }
@@ -226,20 +149,16 @@ fetch(`${tile_url}public.data_building.json`)
       let value = 0;
       const legend = document.getElementById("legend");
       legend.replaceChildren();
-      let choropleth;
-
-      if (choroplethChoice === "height") {
-        choropleth = heightChoropleth;
-      } else if (choroplethChoice === "age") {
-        choropleth = ageChoropleth;
-      } else if (choroplethChoice === "type") {
-        choropleth = typeChoropleth;
-      } else {
+      if (!["height", "type", "age"].includes(choroplethChoice.value)) {
         return;
       }
 
-      choropleth["fill-color"].forEach(function (item, index) {
-        if (choroplethChoice === "type") {
+      choropleth[choroplethChoice.value]["fill-color"].forEach(function (
+        item,
+        index
+      ) {
+        console.log(item, index);
+        if (choroplethChoice.value === "type") {
           index += 1;
         }
         if (index > 2) {
@@ -247,12 +166,9 @@ fetch(`${tile_url}public.data_building.json`)
             const legendElement = document.createElement("div");
             legendElement.innerHTML = value;
             legendElement.style.backgroundColor = item;
-            legendElement.classList.add("p-2");
-            legendElement.classList.add("text-center");
-            legendElement.classList.add("text-black");
             legend.appendChild(legendElement);
           } else {
-            if (choroplethChoice === "type") {
+            if (choroplethChoice.value === "type") {
               value = typeEnumToString(item);
             } else {
               value = item;
@@ -268,64 +184,21 @@ fetch(`${tile_url}public.data_building.json`)
         map.removeLayer("public.data_building.Polygon.fill");
         map.removeLayer("public.data_building.LineString.line");
         map.removeLayer("public.data_building.Polygon.line");
-      } catch (error) {
-        // pass
+      } catch (e) {
+        console.warn(e);
       }
       addOneLayer("public.data_building", "Polygon");
       updateLegend();
     }
 
-    document.getElementById("switchChoroplethOff").onclick = function () {
-      document.getElementById("switchChoroplethOff").classList.add("active");
-      document
-        .getElementById("switchChoroplethHeight")
-        .classList.remove("active");
-      document
-        .getElementById("switchChoroplethType")
-        .classList.remove("active");
-      document.getElementById("switchChoroplethAge").classList.remove("active");
-      choroplethChoice = "off";
-      resetLayers();
-    };
-
-    document.getElementById("switchChoroplethHeight").onclick = function () {
-      document.getElementById("switchChoroplethHeight").classList.add("active");
-      document.getElementById("switchChoroplethOff").classList.remove("active");
-      document
-        .getElementById("switchChoroplethType")
-        .classList.remove("active");
-      document.getElementById("switchChoroplethAge").classList.remove("active");
-      choroplethChoice = "height";
-      resetLayers();
-    };
-
-    document.getElementById("switchChoroplethAge").onclick = function () {
-      document.getElementById("switchChoroplethAge").classList.add("active");
-      document.getElementById("switchChoroplethOff").classList.remove("active");
-      document
-        .getElementById("switchChoroplethType")
-        .classList.remove("active");
-      document
-        .getElementById("switchChoroplethHeight")
-        .classList.remove("active");
-      choroplethChoice = "age";
-      resetLayers();
-    };
-
-    document.getElementById("switchChoroplethType").onclick = function () {
-      document.getElementById("switchChoroplethType").classList.add("active");
-      document
-        .getElementById("switchChoroplethHeight")
-        .classList.remove("active");
-      document.getElementById("switchChoroplethOff").classList.remove("active");
-      document.getElementById("switchChoroplethAge").classList.remove("active");
-      choroplethChoice = "type";
+    switchChoropleth = (choice) => {
+      choroplethChoice.value = choice;
       resetLayers();
     };
 
     function featureHtml(f) {
-      var p = f.properties;
-      var h = "<p>";
+      let p = f.properties;
+      let h = "<p>";
       let value;
       for (var k in p) {
         if (k === "type") {
@@ -344,7 +217,7 @@ fetch(`${tile_url}public.data_building.json`)
 
     function addLayerBehavior(id) {
       map.on("click", id, function (e) {
-        new mapboxgl.Popup()
+        new mapboxgl.Popup({ closeButton: true })
           .setLngLat(e.lngLat)
           .setHTML(featureHtml(e.features[0]))
           .addTo(map);
@@ -369,8 +242,8 @@ fetch(`${tile_url}public.data_building.json`)
 
     function addLayers(id, gtype, url) {
       map.addSource(id, layerSource(url));
-      var gtypebasic = gtype.replace("Multi", "");
-      var gtypes = ["Point", "LineString", "Polygon"];
+      const gtypebasic = gtype.replace("Multi", "");
+      const gtypes = ["Point", "LineString", "Polygon"];
       if (gtypes.includes(gtypebasic)) {
         addOneLayer(id, gtypebasic);
       } else {
@@ -380,7 +253,7 @@ fetch(`${tile_url}public.data_building.json`)
       }
     }
 
-    function mountMap(dark = true) {
+    function mountMap() {
       map = new mapboxgl.Map(mapConfig);
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
 
@@ -401,7 +274,6 @@ fetch(`${tile_url}public.data_building.json`)
 
         addLayers(layer["id"], layer["geometrytype"], tileUrl);
         onZoom(true);
-
         fetch(`${tile_url}public.data_city.json`)
           .then((response) => response.json())
           .then((cityLayer) => {
@@ -483,26 +355,25 @@ fetch(`${tile_url}public.data_building.json`)
     };
 
     function onZoom(force = false) {
-      currentZoomRef.value = map.getZoom();
-      const currentZoom = map.getZoom();
+      currentZoom.value = map.getZoom();
 
       if (force) {
         currentLayer = null;
       }
 
-      if (currentZoom > 13) {
+      if (currentZoom.value > 13) {
         if (currentLayer !== "public.data_building") {
           enableLayer("public.data_building");
-          // document.querySelector(".mapboxgl-popup").remove();
+          document.querySelector(".mapboxgl-popup").remove();
           currentLayer = "public.data_building";
         }
-        // } else if (currentZoom > 8) {
+        // } else if (currentZoom.value > 8) {
         //   if (currentLayer !== "public.data_city") {
         //     enableLayer("public.data_city");
         //     // document.querySelector(".mapboxgl-popup").remove();
         //     currentLayer = "public.data_city";
         //   }
-        // } else if (currentZoom > 6) {
+        // } else if (currentZoom.value > 6) {
         //   if (currentLayer !== "public.data_region") {
         //     enableLayer("public.data_region");
         //     // document.querySelector(".mapboxgl-popup").remove();
@@ -511,7 +382,7 @@ fetch(`${tile_url}public.data_building.json`)
       } else {
         if (currentLayer !== "public.data_country_view") {
           enableLayer("public.data_country_view");
-          // document.querySelector(".mapboxgl-popup").remove();
+          document.querySelector(".mapboxgl-popup").remove();
           currentLayer = "public.data_country_view";
         }
       }
