@@ -69,7 +69,7 @@ fetch(`${tile_url}public.data_building.json`)
   .then((layer) => {
     let mapConfig = {
       container: "map",
-      maxBounds: layer["bounds"],
+      bounds: layer["bounds"],
       hash: true,
       pitchWithRotate: false,
       dragRotate: false,
@@ -253,6 +253,8 @@ fetch(`${tile_url}public.data_building.json`)
       }
     }
 
+    // ######################################################
+
     function mountMap() {
       map = new mapboxgl.Map(mapConfig);
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
@@ -364,7 +366,7 @@ fetch(`${tile_url}public.data_building.json`)
       if (currentZoom.value > 13) {
         if (currentLayer !== "public.data_building") {
           enableLayer("public.data_building");
-          document.querySelector(".mapboxgl-popup").remove();
+          document.querySelector(".mapboxgl-popup")?.remove();
           currentLayer = "public.data_building";
         }
         // } else if (currentZoom.value > 8) {
@@ -382,7 +384,7 @@ fetch(`${tile_url}public.data_building.json`)
       } else {
         if (currentLayer !== "public.data_country_view") {
           enableLayer("public.data_country_view");
-          document.querySelector(".mapboxgl-popup").remove();
+          document.querySelector(".mapboxgl-popup")?.remove();
           currentLayer = "public.data_country_view";
         }
       }
@@ -395,6 +397,9 @@ fetch(`${tile_url}public.data_building.json`)
 </script>
 
 <style lang="scss">
+:root {
+  --primary-color: rgb(220, 0, 0);
+}
 #map,
 .absolute {
   position: absolute;
@@ -455,7 +460,7 @@ fetch(`${tile_url}public.data_building.json`)
     box-shadow: 0 0 0.5em rgba(0, 0, 0, 0.2);
     border-radius: 3px;
     &.active {
-      background-color: rgb(220, 0, 0);
+      background-color: var(--primary-color);
       color: white;
     }
   }
@@ -470,7 +475,7 @@ fetch(`${tile_url}public.data_building.json`)
   width: 2.7em;
   height: 2.7em;
   border-radius: 99px;
-  border: 2px solid rgb(220, 0, 0);
+  border: 2px solid var(--primary-color);
   z-index: 1000;
   background-color: transparent;
   transition: all 0.7s;
@@ -485,7 +490,7 @@ fetch(`${tile_url}public.data_building.json`)
     width: 2em;
     height: 2em;
     transition: all 0.3s;
-    background-color: rgb(220, 0, 0);
+    background-color: var(--primary-color);
   }
 
   span {
