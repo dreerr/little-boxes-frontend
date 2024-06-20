@@ -4,7 +4,7 @@
       <component :is="getSvg(item.en)" />
       <!-- <img :alt="item.de + ' / ' + item.en" :src="getImageUrl(item.de)" /> -->
       <figcaption>
-        {{ item.de }} <em> / {{ item.en }}</em>
+        {{ item.de }} ⋅ <em>{{ item.en }}</em>
       </figcaption>
     </figure>
   </div>
@@ -77,6 +77,9 @@ figcaption {
   text-align: center;
   margin-bottom: 2em;
   padding: 0 1em;
+  em {
+    white-space: nowrap;
+  }
 }
 
 :deep(svg) {
