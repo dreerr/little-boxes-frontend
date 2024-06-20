@@ -2,7 +2,6 @@
   <div class="container">
     <figure v-for="item in items" :key="item">
       <component :is="getSvg(item.en)" />
-      <!-- <img :alt="item.de + ' / ' + item.en" :src="getImageUrl(item.de)" /> -->
       <figcaption>
         {{ item.de }} ⋅ <em>{{ item.en }}</em>
       </figcaption>
@@ -13,12 +12,6 @@
 <script setup>
 import { defineAsyncComponent, onUnmounted } from "vue";
 import items from "./assets/top-ten/items.json";
-
-function getImageUrl(item) {
-  const path = `./assets/top-ten/${encodeURIComponent(item)}.svg`;
-  const url = new URL(path, import.meta.url);
-  return url.href;
-}
 
 function getSvg(item) {
   return defineAsyncComponent(() => import(`./assets/top-ten/${item}.svg`));
@@ -84,12 +77,8 @@ figcaption {
 }
 
 :deep(svg) {
-  path {
-  }
   path.highlighted {
-    // stroke-width: 0.5;
     fill: rgba(0, 0, 0, 1);
-    // stroke: rgba(200, 0, 0);
   }
 }
 </style>
