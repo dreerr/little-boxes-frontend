@@ -60,6 +60,11 @@ async function toggleMesh() {
     }
   }
 }
+document.onkeyup = (e) => {
+  if (e.key === "m") {
+    toggleMesh();
+  }
+};
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiZHJlZXJyIiwiYSI6ImNseGRxbGRuMzA5NWoycnNjeHQ3aHFsYTMifQ.qz0_kP4890CI-8z_EbCs5A";

@@ -1,0 +1,67 @@
+[
+  { "de": "Die größten Bahnhöfe", "en": "The largest train stations" },
+  { "de": "Die ältesten Museen", "en": "The oldest museums" },
+  {
+    "de": "Die am wenigsten kompakten Kirchen",
+    "en": "The least compact churches"
+  },
+  { "de": "Die detailliertesten Gebäude", "en": "The most detailed buildings" },
+  { "de": "Die detailliertesten Ruinen", "en": "The most detailed ruins" },
+  {
+    "de": "Die größten Gebäude mit 10 Punkten",
+    "en": "The largest buildings with 10 points"
+  },
+  {
+    "de": "Die größten Gebäude mit 100 Punkten",
+    "en": "The largest buildings with 100 points"
+  },
+  {
+    "de": "Die größten Gebäude mit 1000 Punkten",
+    "en": "The largest buildings with 1000 points"
+  },
+  {
+    "de": "Die größten Gebäude vor 1900",
+    "en": "The largest buildings before 1900"
+  },
+  { "de": "Die größten Gebäude", "en": "The largest buildings" },
+  { "de": "Die größten Hotels", "en": "The largest hotels" },
+  {
+    "de": "Die größten Industriebauten",
+    "en": "The largest industrial buildings"
+  },
+  { "de": "Die größten Kirchen", "en": "The largest churches" },
+  { "de": "Die größten Krankenhäuser", "en": "The largest hospitals" },
+  {
+    "de": "Die größten Parkhäuser in Deutschland",
+    "en": "The largest parking garages in Germany"
+  },
+  { "de": "Die größten Schulen", "en": "The largest schools" },
+  {
+    "de": "Die größten Wohnhäuser aus den 1930ern",
+    "en": "The largest residential buildings from the 1930s"
+  },
+  {
+    "de": "Die größten Wohnhäuser aus den 1960ern",
+    "en": "The largest residential buildings from the 1960s"
+  },
+  {
+    "de": "Die größten Wohnhäuser aus den 1990ern",
+    "en": "The largest residential buildings from the 1990s"
+  },
+  {
+    "de": "Die höchsten Gebäude gebaut vor 1800",
+    "en": "The tallest buildings built before 1800"
+  },
+  {
+    "de": "Die höchsten Gebäude von Paris",
+    "en": "The tallest buildings in Paris"
+  },
+  {
+    "de": "Die höchsten Gebäude von Wien",
+    "en": "The tallest buildings in Vienna"
+  },
+  { "de": "Die höchsten Gebäude", "en": "The tallest buildings" },
+  { "de": "Die höchsten Kirchen", "en": "The tallest churches" },
+  { "de": "Die kleinsten Gebäude", "en": "The smallest buildings" },
+  { "de": "Die kompaktesten Bauten", "en": "The most compact buildings" }
+]

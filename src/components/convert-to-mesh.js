@@ -1,15 +1,13 @@
-import rewind from "@mapbox/geojson-rewind";
 import {
   union,
-  toMercator,
-  booleanContains,
   bbox,
-  convex,
+  rewind,
   simplify,
+  featureCollection as turfFeatureCollection,
 } from "@turf/turf";
 import earcut from "earcut";
 import { loadMatterJs } from "./convert-to-physics";
-import simplifyLeaflet from "simplify-js";
+// import simplifyLeaflet from "simplify-js";
 
 export async function createCanvasWithMesh(
   map,
@@ -78,10 +76,10 @@ export async function createCanvasWithMesh(
       } else {
         const last = acc[acc.length - 1];
         if (last.properties.id === cur.properties.id) {
-          const unionized = union(last, cur);
-          last.geometry = rewind(unionized.geometry, true);
+          const unionized = union(turfFeatureCollection([last, cur]));
+          last.geometry = rewind(unionized.geometry);
         } else {
-          acc.push(cur);
+          acc.push(rewind(cur));
         }
       }
       return acc;
@@ -121,11 +119,11 @@ export async function createCanvasWithMesh(
 
   console.time("simplify");
   const verticesCollection = featureCollection.features.flatMap((d) => {
-    d;
     let items =
       d.geometry.type === "Polygon"
         ? [d.geometry.coordinates]
         : d.geometry.coordinates;
+    // items = simplify(items);
     return items.map((coordinates) => {
       let vertices = coordinates[0].map((d) => {
         return {

@@ -1,31 +1,13 @@
 <template>
-  <div class="container">
-    <div
-      class="half left"
-      :class="{ active: isActive === 'left' }"
-      @click="expand('left')"
-    >
+  <nav class="container">
+    <RouterLink to="fluid-cities/" class="half left">
       <span>Fluid Cities</span>
-    </div>
-    <div
-      class="half right"
-      :class="{ active: isActive === 'right' }"
-      @click="expand('right')"
-    >
+    </RouterLink>
+    <RouterLink to="top-ten/" class="half right">
       <span>Top Ten</span>
-    </div>
-  </div>
+    </RouterLink>
+  </nav>
 </template>
-
-<script setup>
-import { ref } from "vue";
-
-const isActive = ref(null);
-
-const expand = (side) => {
-  isActive.value = side;
-};
-</script>
 
 <style scoped>
 .container {
@@ -45,13 +27,24 @@ const expand = (side) => {
 }
 
 .left {
-  background-color: black;
-  color: white;
+  background: url("./assets/fluid-cities.png") no-repeat left bottom;
+  background-size: cover;
+  span {
+    background-color: white;
+    color: black;
+    line-height: 1;
+    padding: 0.1em;
+  }
 }
 
 .right {
-  background-color: white;
-  color: black;
+  background: url("./assets/top-ten.jpg") no-repeat center bottom;
+  background-size: cover;
+  span {
+    color: black;
+    line-height: 1;
+    padding: 0.1em;
+  }
 }
 
 .half span {
