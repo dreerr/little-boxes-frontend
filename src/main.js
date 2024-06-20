@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import { createWebHistory, createRouter } from "vue-router";
+import VueMatomo from "vue-matomo";
 
 import "normalize.css";
 import "./style.css";
@@ -20,4 +21,14 @@ const router = createRouter({
   routes,
 });
 
-createApp(App).use(router).mount("#app");
+const app = createApp(App);
+app.use(router);
+app.use(VueMatomo, {
+  host: import.meta.env.VITE_MATOMO_URL,
+  siteId: parseInt(import.meta.env.VITE_MATOMO_ID),
+  router: router,
+});
+
+router.isReady().then(() => {
+  app.mount("#app");
+});

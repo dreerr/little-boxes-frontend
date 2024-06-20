@@ -86,8 +86,6 @@ export async function createCanvasWithMesh(
     }, []);
   console.timeEnd("unionize");
 
-  console.time("simplify");
-
   // const collection = featureCollection.features.map((d) => {
   //   // const hull = simplify(convex(d), { tolerance: 0.0001, highQuality: false });
   //   const bb = bbox(d);

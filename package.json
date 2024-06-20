@@ -21,6 +21,7 @@
     "simplify-js": "^1.2.4",
     "swiper": "^11.1.4",
     "vue": "^3.4.29",
+    "vue-matomo": "^4.2.0",
     "vue-router": "^4.3.3"
   },
   "devDependencies": {
@@ -31,6 +32,8 @@
     "globals": "^15.6.0",
     "sass": "^1.77.6",
     "vite": "^5.3.1",
+    "vite-plugin-favicons-inject": "^2.2.0",
+    "vite-plugin-open-graph": "^2.0.4",
     "vite-svg-loader": "^5.1.0"
   }
 }

@@ -56,6 +56,8 @@ async function toggleMesh() {
       canvas.classList.add("absolute");
       document.body.appendChild(canvas);
       isMeshActive.value = true;
+      window._paq.push(["setCustomUrl", window.location.href]);
+      window._paq.push(["trackPageView"]);
     } else {
       alert("Please zoom in to start");
     }
@@ -163,7 +165,6 @@ fetch(`${tile_url}public.data_building.json`)
         item,
         index
       ) {
-        console.log(item, index);
         if (choroplethChoice.value === "type") {
           index += 1;
         }

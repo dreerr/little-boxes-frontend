@@ -114,7 +114,6 @@ export async function loadMatterJs(
   // Create js body from vertices
   function createBody(item) {
     const centroid = calculateCentroid(item.vertices);
-    console.log(Vertices.isConvex(item.vertices));
     const body = Bodies.fromVertices(
       centroid.x,
       centroid.y,
@@ -135,7 +134,7 @@ export async function loadMatterJs(
       0.0
     );
     if (!body) {
-      console.log(body);
+      console.warn("Failed to create body from vertice", item);
     } else {
       try {
         Composite.add(engine.world, body);
