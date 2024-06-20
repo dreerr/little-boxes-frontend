@@ -11,8 +11,9 @@
 </template>
 
 <script setup>
-import { defineAsyncComponent, nextTick, onMounted } from "vue";
+import { defineAsyncComponent } from "vue";
 import items from "./assets/top-ten/items.json";
+
 function getImageUrl(item) {
   const path = `./assets/top-ten/${encodeURIComponent(item)}.svg`;
   const url = new URL(path, import.meta.url);
@@ -20,13 +21,11 @@ function getImageUrl(item) {
 }
 
 function getSvg(item) {
-  const path = `./assets/top-ten/${encodeURIComponent(item)}.svg`;
-  return defineAsyncComponent(() => import(path));
+  return defineAsyncComponent(() => import(`./assets/top-ten/${item}.svg`));
 }
 
 setInterval(() => {
   const svgs = document.querySelectorAll("svg");
-  console.log(svgs);
   svgs.forEach((svg) => {
     const paths = svg.querySelectorAll("path");
     if (paths.length > 0) {
