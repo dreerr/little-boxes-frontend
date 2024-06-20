@@ -9,7 +9,7 @@
   </nav>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .container {
   display: flex;
   height: 100vh;
@@ -32,8 +32,6 @@
   span {
     background-color: white;
     color: black;
-    line-height: 1;
-    padding: 0.1em;
   }
 }
 
@@ -42,28 +40,14 @@
   background-size: cover;
   span {
     color: black;
-    line-height: 1;
-    padding: 0.1em;
   }
 }
 
 .half span {
   font-size: 2em;
-  transition: font-size 0.3s ease;
   position: relative;
   z-index: 1;
-}
-
-.half:hover span {
-  font-size: 2.5em;
-}
-
-.half.active {
-  width: 100%; /* Bei Aktivierung 100% Breite */
-  flex: 1 1 100%;
-}
-
-.half:not(.active) {
-  /* display: none; Unsichtbar wenn nicht aktiv */
+  line-height: 1;
+  padding: 0.1em;
 }
 </style>
