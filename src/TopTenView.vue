@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-import { defineAsyncComponent } from "vue";
+import { defineAsyncComponent, onUnmounted } from "vue";
 import items from "./assets/top-ten/items.json";
 
 function getImageUrl(item) {
@@ -24,7 +24,7 @@ function getSvg(item) {
   return defineAsyncComponent(() => import(`./assets/top-ten/${item}.svg`));
 }
 
-setInterval(() => {
+const interval = setInterval(() => {
   const svgs = document.querySelectorAll("svg");
   svgs.forEach((svg) => {
     const paths = svg.querySelectorAll("path");
@@ -40,6 +40,7 @@ setInterval(() => {
     }
   });
 }, 500);
+onUnmounted(() => clearInterval(interval));
 </script>
 
 <style lang="scss" scoped>
