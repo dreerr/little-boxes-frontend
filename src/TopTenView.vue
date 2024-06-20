@@ -1,64 +1,92 @@
 <template>
-  <div>
+  <div class="container">
     <figure v-for="item in items" :key="item">
-      <img :alt="item" :src="getImageUrl(item)" />
-      <figcaption>{{ item }}</figcaption>
+      <component :is="getSvg(item.en)" />
+      <!-- <img :alt="item.de + ' / ' + item.en" :src="getImageUrl(item.de)" /> -->
+      <figcaption>
+        {{ item.de }} <em> / {{ item.en }}</em>
+      </figcaption>
     </figure>
   </div>
 </template>
 
 <script setup>
-const items = [
-  "Die größten Bahnhöfe",
-  "Die ältesten Museen",
-  "Die am wenigsten kompakten Kirchen",
-  "Die detailliertesten Gebäude",
-  "Die detailliertesten Ruinen",
-  "Die größten Gebäude mit 10 Punkten",
-  "Die größten Gebäude mit 100 Punkten",
-  "Die größten Gebäude mit 1000 Punkten",
-  "Die größten Gebäude vor 1900",
-  "Die größten Gebäude",
-  "Die größten Hotels",
-  "Die größten Industriebauten",
-  "Die größten Kirchen",
-  "Die größten Krankenhäuser",
-  "Die größten Parkhäuser in Deutschland",
-  "Die größten Schulen",
-  "Die größten Wohnhäuser aus den 1930ern",
-  "Die größten Wohnhäuser aus den 1960ern",
-  "Die größten Wohnhäuser aus den 1990ern",
-  "Die höchsten Gebäude gebaut vor 1800",
-  "Die höchsten Gebäude von Paris",
-  "Die höchsten Gebäude von Wien",
-  "Die höchsten Gebäude",
-  "Die höchsten Kirchen",
-  "Die kleinsten Gebäude",
-  "Die kompaktesten Bauten",
-];
+import { defineAsyncComponent, nextTick, onMounted } from "vue";
+import items from "./assets/top-ten/items.json";
 function getImageUrl(item) {
-  return new URL(`./assets/top-ten/${item}.svg`, import.meta.url).href;
+  const path = `./assets/top-ten/${encodeURIComponent(item)}.svg`;
+  const url = new URL(path, import.meta.url);
+  return url.href;
 }
+
+function getSvg(item) {
+  const path = `./assets/top-ten/${encodeURIComponent(item)}.svg`;
+  return defineAsyncComponent(() => import(path));
+}
+
+setInterval(() => {
+  const svgs = document.querySelectorAll("svg");
+  console.log(svgs);
+  svgs.forEach((svg) => {
+    const paths = svg.querySelectorAll("path");
+    if (paths.length > 0) {
+      svg.currentPathIndex = svg.currentPathIndex || 0;
+
+      paths.forEach((path) => path.classList.remove("highlighted"));
+      paths[svg.currentPathIndex].classList.add("highlighted");
+      svg.currentPathIndex++;
+      if (svg.currentPathIndex >= paths.length) {
+        svg.currentPathIndex = 0;
+      }
+    }
+  });
+}, 500);
 </script>
 
 <style lang="scss" scoped>
+.container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+}
 figure {
+  scroll-snap-align: start;
   height: 100vh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
   margin: 0;
+  box-sizing: content-box;
   border-bottom: 50px solid silver;
 }
-img {
-  box-sizing: border-box;
+svg {
   padding: 1em;
-  height: 90vh;
-  width: 100%;
-  object-fit: contain;
 }
+// img {
+//   box-sizing: border-box;
+//   padding: 1em;
+//   height: 90vh;
+//   width: 100%;
+//   object-fit: contain;
+// }
 figcaption {
+  margin-top: auto;
   text-align: center;
   margin-bottom: 2em;
+  padding: 0 1em;
+}
+
+:deep(svg) {
+  path {
+  }
+  path.highlighted {
+    // stroke-width: 0.5;
+    fill: rgba(0, 0, 0, 1);
+    // stroke: rgba(200, 0, 0);
+  }
 }
 </style>

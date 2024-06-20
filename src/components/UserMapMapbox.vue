@@ -28,12 +28,10 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { ref } from "vue";
 import { painttypes, choropleth } from "../constants.js";
 
+let map, paints, enableLayer, canvas, destroyPromise;
 let isMeshActive = ref(false);
 const currentZoom = ref(0);
 const choroplethChoice = ref("height");
-let map;
-let paints;
-let enableLayer;
 let mapcolor = "white";
 let currentLayer = null;
 let switchChoropleth; // init here, because we need to use it in the template
@@ -41,12 +39,15 @@ const tile_url = "https://tiles.eubucco.com/";
 
 async function toggleMesh() {
   if (isMeshActive.value) {
+    destroyPromise.then(function (destroyFn) {
+      destroyFn();
+    });
     document.querySelector(".absolute")?.remove();
     isMeshActive.value = false;
   } else {
     if (map.getZoom() > 13) {
       document.querySelector(".absolute")?.remove();
-      const canvas = await createCanvasWithMesh(
+      [canvas, destroyPromise] = await createCanvasWithMesh(
         map,
         window.innerWidth,
         window.innerHeight,

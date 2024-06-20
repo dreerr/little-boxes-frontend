@@ -138,9 +138,15 @@ export async function createCanvasWithMesh(
   });
   console.timeEnd("simplify");
   console.time("matter-js");
-  loadMatterJs(canvas, width, height, verticesCollection, highQuality);
+  const destroyPromise = loadMatterJs(
+    canvas,
+    width,
+    height,
+    verticesCollection,
+    highQuality
+  );
   console.timeEnd("matter-js");
-  return canvas;
+  return [canvas, destroyPromise];
 
   // const verticesCollection = featureCollection.features.flatMap((d) => {
   //   // Make a MultiPolygon into a Polygon

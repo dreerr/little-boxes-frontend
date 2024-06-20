@@ -184,6 +184,17 @@ export async function loadMatterJs(
     await new Promise(requestAnimationFrame); // Yield to allow UI update
   }
   Events.on(engine, "afterUpdate", applyAttraction);
+  return function destroy() {
+    Events.off(engine, "afterUpdate");
+    World.clear(engine.world);
+    Engine.clear(engine);
+    Render.stop(render);
+    render.canvas.remove();
+    render.canvas = null;
+    render.context = null;
+    render.textures = {};
+    engine = null;
+  };
 }
 
 function applyAttraction() {
