@@ -5,16 +5,27 @@ import {
   simplify,
   featureCollection as turfFeatureCollection,
 } from "@turf/turf";
-import earcut from "earcut";
+
 import { loadMatterJs } from "./convert-to-physics";
-// import simplifyLeaflet from "simplify-js";
+import { remap } from "@anselan/maprange";
 
 export async function createCanvasWithMesh(
   map,
   width = window.innerWidth,
-  height = window.innerHeight,
-  highQuality = false
+  height = window.innerHeight
 ) {
+  const mapFeatures = map.querySourceFeatures("public.data_building", {
+    sourceLayer: "public.data_building",
+  });
+
+  const highQuality = mapFeatures.length < 19_000;
+  console.log("high quality", highQuality, mapFeatures.length);
+
+  // canvas
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
   // bounds
   const bounds = map.getBounds();
   const [minX, minY, maxX, maxY] = [
@@ -24,27 +35,11 @@ export async function createCanvasWithMesh(
     bounds.getSouth(),
   ];
 
-  const mapBbox = [
-    bounds.getWest(),
-    bounds.getSouth(),
-    bounds.getEast(),
-    bounds.getNorth(),
-  ];
-
+  const mapBbox = [minX, maxY, maxX, minY];
   const geoWidth = maxX - minX,
     geoHeight = maxY - minY;
   const ratioX = width / geoWidth;
   const ratioY = height / geoHeight;
-
-  // canvas
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  canvas.width = width;
-  canvas.height = height;
-
-  const mapFeatures = map.querySourceFeatures("public.data_building", {
-    sourceLayer: "public.data_building",
-  });
 
   // create feature collection
   const featureCollection = {
@@ -61,16 +56,6 @@ export async function createCanvasWithMesh(
       if (!isBboxWithinMapBounds(bbox(cur), mapBbox)) {
         return acc;
       }
-
-      // // remove holes
-      // if (cur.geometry.type === "MultiPolygon") {
-      //   cur.geometry.coordinates = cur.geometry.coordinates.map((items) => {
-      //     return items.slice(0, 1);
-      //   });
-      // } else {
-      //   cur.geometry.coordinates = [cur.geometry.coordinates[0]];
-      // }
-
       if (acc.length === 0) {
         acc.push(cur);
       } else {
@@ -86,42 +71,21 @@ export async function createCanvasWithMesh(
     }, []);
   console.timeEnd("unionize");
 
-  // const collection = featureCollection.features.map((d) => {
-  //   // const hull = simplify(convex(d), { tolerance: 0.0001, highQuality: false });
-  //   const bb = bbox(d);
-  //   // console.log("bb", bb, "hull", hull);
-  //   let vertices = d.geometry.coordinates[0].map((p) => project(p[0], p[1]));
-  //   // console.log(hull.geometry.coordinates[0]);
-  //   // console.log(vertices);
-  //   let bb1 = project(bb[0], bb[3]);
-  //   let bb2 = project(bb[2], bb[1]);
-  //   let w = bb2.x - bb1.x;
-  //   let h = bb2.y - bb1.y;
-  //   // const converter = new GeoJSON2SVG({
-  //   //   coordinateConverter: function (e) {
-  //   //     const a = map.project([e[1], e[0]]);
-  //   //     return [a.x, a.y];
-  //   //   },
-  //   //   mapExtentFromGeojson: true,
-  //   //   viewportSize: { width: w, height: h },
-  //   // });
-  //   // let svg =
-  //   //   `<svg xmlns="http://www.w3.org/2000/svg">` +
-  //   //   converter.convert(d).join("") +
-  //   //   "</svg>";
-  //   return { vertices };
-  // });
-  // console.timeEnd("simplify");
-  // loadMatterJs(canvas, width, height, collection);
-  // return canvas;
+  if (featureCollection.features.length === 0) {
+    return [null, null];
+  }
 
   console.time("simplify");
-  const verticesCollection = featureCollection.features.flatMap((d) => {
+  const tolerance = remap(map.getZoom(), [13, 18], [0.00001, 0.0000001]);
+  console.log("simplify tolerance", tolerance);
+  const verticesCollection = simplify(featureCollection, {
+    tolerance,
+    highQuality: false,
+  }).features.flatMap((d) => {
     let items =
       d.geometry.type === "Polygon"
         ? [d.geometry.coordinates]
         : d.geometry.coordinates;
-    // items = simplify(items);
     return items.map((coordinates) => {
       let vertices = coordinates[0].map((d) => {
         return {
@@ -131,10 +95,10 @@ export async function createCanvasWithMesh(
       });
 
       return { vertices };
-      // return simplifyLeaflet(vertices, 3);
     });
   });
   console.timeEnd("simplify");
+
   console.time("matter-js");
   const destroyPromise = loadMatterJs(
     canvas,
@@ -145,106 +109,6 @@ export async function createCanvasWithMesh(
   );
   console.timeEnd("matter-js");
   return [canvas, destroyPromise];
-
-  // const verticesCollection = featureCollection.features.flatMap((d) => {
-  //   // Make a MultiPolygon into a Polygon
-  //   let geometryCoordinates =
-  //     d.geometry.type === "Polygon"
-  //       ? [d.geometry.coordinates]
-  //       : d.geometry.coordinates;
-  //   return geometryCoordinates.map((coordinates) => {
-  //     const simple = coordinates.map((coords) => simplify(coords, 0.000001));
-  //     console.log("simple", simple.flat().length, coordinates.flat().length);
-  //     const data = earcut.flatten(simple);
-  //     const result = earcut(data.vertices, data.holes, data.dimensions);
-
-  //     let vertices = [];
-  //     for (let i = 0; i < result.length; i += 3) {
-  //       vertices.push([
-  //         {
-  //           x: (data.vertices[result[i] * data.dimensions] - minX) * ratioX,
-  //           y: (data.vertices[result[i] * data.dimensions + 1] - minY) * ratioY,
-  //         },
-  //         {
-  //           x: (data.vertices[result[i + 1] * data.dimensions] - minX) * ratioX,
-  //           y:
-  //             (data.vertices[result[i + 1] * data.dimensions + 1] - minY) *
-  //             ratioY,
-  //         },
-  //         {
-  //           x: (data.vertices[result[i + 2] * data.dimensions] - minX) * ratioX,
-  //           y:
-  //             (data.vertices[result[i + 2] * data.dimensions + 1] - minY) *
-  //             ratioY,
-  //         },
-  //         {
-  //           x: (data.vertices[result[i] * data.dimensions] - minX) * ratioX,
-  //           y: (data.vertices[result[i] * data.dimensions + 1] - minY) * ratioY,
-  //         },
-  //       ]);
-  //     }
-  //     return vertices;
-  //   });
-  // });
-  // loadMatterJs(canvas, width, height, verticesCollection);
-  // return canvas;
-
-  const pixelScale = window.devicePixelRatio;
-  if (pixelScale > 1) {
-    canvas.style.width = canvas.width + "px";
-    canvas.style.height = canvas.height + "px";
-    canvas.width *= pixelScale;
-    canvas.height *= pixelScale;
-    ctx.scale(pixelScale, pixelScale);
-  }
-
-  function drawPoly(rings, color, fill) {
-    ctx.beginPath();
-
-    ctx.strokeStyle = color;
-    if (fill && fill !== true) ctx.fillStyle = fill;
-
-    if (typeof rings[0][0] === "number") rings = [rings];
-
-    for (var k = 0; k < rings.length; k++) {
-      var points = rings[k];
-      for (var i = 0; i < points.length; i++) {
-        var x = (points[i][0] - minX) * ratioX,
-          y = (points[i][1] - minY) * ratioY;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      if (fill) ctx.closePath();
-    }
-    ctx.stroke();
-
-    if (fill && fill !== true) ctx.fill("evenodd");
-  }
-  featureCollection.features.forEach((d) => {
-    const simple = simplify(d.geometry.coordinates, 1);
-    const data = earcut.flatten(simple);
-    const result = earcut(data.vertices, data.holes, data.dimensions);
-    const triangles = [];
-    for (let i = 0; i < result.length; i++) {
-      const index = result[i];
-      triangles.push([
-        data.vertices[index * data.dimensions],
-        data.vertices[index * data.dimensions + 1],
-      ]);
-    }
-
-    ctx.lineJoin = "round";
-    for (let i = 0; triangles && i < triangles.length; i += 3) {
-      drawPoly(
-        triangles.slice(i, i + 3),
-        "rgba(255,0,0,0.2)",
-        "rgba(255,255,0,0.2)"
-      );
-    }
-  });
-  console.timeEnd("earcut");
-
-  return canvas;
 }
 function isBboxWithinMapBounds(featureBbox, mapBbox) {
   const [featureMinX, featureMinY, featureMaxX, featureMaxY] = featureBbox;
@@ -255,10 +119,4 @@ function isBboxWithinMapBounds(featureBbox, mapBbox) {
     featureMaxY < mapMinY ||
     featureMinY > mapMaxY
   );
-  // return (
-  //   featureMinX >= mapMinX &&
-  //   featureMinY >= mapMinY &&
-  //   featureMaxX <= mapMaxX &&
-  //   featureMaxY <= mapMaxY
-  // );
 }

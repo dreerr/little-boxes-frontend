@@ -12,7 +12,6 @@ import {
   World,
   Common,
 } from "matter-js";
-import { centroid } from "@turf/turf";
 import decomp from "poly-decomp";
 
 Common.setDecomp(decomp);
@@ -100,17 +99,7 @@ export async function loadMatterJs(
     centroid.y /= vertices.flat().length;
     return centroid;
   }
-  const starSvgDataUri =
-    "data:image/svg+xml;charset=UTF-8," +
-    encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-        <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" fill="gold" stroke="black" stroke-width="1"/>
-    </svg>
-`);
-  function encodeSvg(svg) {
-    console.log("svg", svg);
-    return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
-  }
+
   // Create js body from vertices
   function createBody(item) {
     const centroid = calculateCentroid(item.vertices);
@@ -119,13 +108,8 @@ export async function loadMatterJs(
       centroid.y,
       [item.vertices],
       {
-        // isStatic: true,
-
         render: {
           fillStyle: "rgba(0,0,0,1)",
-          // sprite: {
-          //   texture: starSvgDataUri,
-          // },
         },
       },
       false,
@@ -139,7 +123,7 @@ export async function loadMatterJs(
       try {
         Composite.add(engine.world, body);
       } catch (error) {
-        // console.error("Failed to create body from vertice", vertices, error);
+        console.error("Failed to create body from vertice", item, error);
       }
     }
   }

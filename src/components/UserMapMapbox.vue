@@ -42,18 +42,21 @@ async function toggleMesh() {
     destroyPromise.then(function (destroyFn) {
       destroyFn();
     });
-    document.querySelector(".absolute")?.remove();
+    document.querySelector("#mesh")?.remove();
     isMeshActive.value = false;
   } else {
     if (map.getZoom() > 13) {
-      document.querySelector(".absolute")?.remove();
+      document.querySelector("#mesh")?.remove();
       [canvas, destroyPromise] = await createCanvasWithMesh(
         map,
         window.innerWidth,
-        window.innerHeight,
-        map.getZoom() >= 15
+        window.innerHeight
       );
-      canvas.classList.add("absolute");
+      if (!canvas) {
+        alert("No buildings found in this area");
+        return;
+      }
+      canvas.id = "mesh";
       document.body.appendChild(canvas);
       isMeshActive.value = true;
       window._paq.push(["setCustomUrl", window.location.href]);
@@ -408,7 +411,7 @@ fetch(`${tile_url}public.data_building.json`)
   --primary-color: rgb(220, 0, 0);
 }
 #map,
-.absolute {
+#mesh {
   position: absolute;
   top: 0;
   bottom: 0;
