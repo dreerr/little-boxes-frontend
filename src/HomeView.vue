@@ -12,7 +12,11 @@
 <style lang="scss" scoped>
 .container {
   display: flex;
-  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .half {
@@ -27,7 +31,7 @@
 }
 
 .left {
-  background: url("./assets/fluid-cities.png") no-repeat left bottom;
+  background: url("./assets/fluid-cities.jpg") no-repeat center bottom;
   background-size: cover;
   span {
     background-color: white;
@@ -36,10 +40,10 @@
 }
 
 .right {
-  background: url("./assets/top-ten.jpg") no-repeat center bottom;
+  background: url("./assets/top-ten.jpg") no-repeat center center;
   background-size: cover;
   span {
-    color: black;
+    color: white;
   }
 }
 

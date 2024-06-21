@@ -26,10 +26,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",
+    "@vheemstra/vite-plugin-imagemin": "^2.0.0",
     "@vitejs/plugin-vue": "^5.0.5",
     "eslint": "^9.5.0",
     "eslint-plugin-vue": "^9.26.0",
     "globals": "^15.6.0",
+    "imagemin-avif": "^0.1.6",
+    "imagemin-mozjpeg": "^10.0.0",
     "sass": "^1.77.6",
     "vite": "^5.3.1",
     "vite-plugin-favicons-inject": "^2.2.0",
