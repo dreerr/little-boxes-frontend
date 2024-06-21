@@ -54,6 +54,16 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "mapbox-gl": ["mapbox-gl"],
+            "matter-js": ["matter-js"],
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
