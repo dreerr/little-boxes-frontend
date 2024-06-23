@@ -1,6 +1,8 @@
 <template>
   <div id="map" :class="['mapboxgl-map', { disabled: isMeshActive }]"></div>
-  <div :class="['btm-nav', { disabled: isMeshActive || currentZoom < 13 }]">
+  <div
+    :class="['choropleth-ctl', { disabled: isMeshActive || currentZoom < 13 }]"
+  >
     <button
       v-for="value in ['Off', 'Height', 'Age', 'Type']"
       :key="value"
@@ -12,12 +14,19 @@
   </div>
   <div id="legend" :class="{ disabled: currentZoom < 13 }"></div>
   <button
-    id="toggleMesh"
+    class="mesh-ctl"
     @click="toggleMesh"
     title="Change view"
-    :class="{ disabled: currentZoom < 13, active: isMeshActive }"
+    :class="{
+      enabled: currentZoom >= 13,
+      active: isMeshActive,
+      untouched: isUntouched,
+    }"
   >
-    <span>zoom in to start</span>
+    <div class="text-disabled">zoom in to start</div>
+    <div class="circle">
+      <span class="text-enabled">click here to start</span>
+    </div>
   </button>
 </template>
 
@@ -30,6 +39,7 @@ import { painttypes, choropleth } from "../constants.js";
 
 let map, paints, enableLayer, canvas, destroyPromise;
 let isMeshActive = ref(false);
+let isUntouched = ref(true);
 const currentZoom = ref(0);
 const choroplethChoice = ref("height");
 let mapcolor = "white";
@@ -38,6 +48,10 @@ let switchChoropleth; // init here, because we need to use it in the template
 const tile_url = "https://tiles.eubucco.com/";
 
 async function toggleMesh() {
+  if (map.getZoom() < 13) {
+    return alert("Please zoom in to start");
+  }
+  isUntouched.value = false;
   if (isMeshActive.value) {
     destroyPromise.then(function (destroyFn) {
       destroyFn();
@@ -45,25 +59,21 @@ async function toggleMesh() {
     document.querySelector("#mesh")?.remove();
     isMeshActive.value = false;
   } else {
-    if (map.getZoom() > 13) {
-      document.querySelector("#mesh")?.remove();
-      [canvas, destroyPromise] = await createCanvasWithMesh(
-        map,
-        window.innerWidth,
-        window.innerHeight
-      );
-      if (!canvas) {
-        alert("No buildings found in this area");
-        return;
-      }
-      canvas.id = "mesh";
-      document.body.appendChild(canvas);
-      isMeshActive.value = true;
-      window._paq.push(["setCustomUrl", window.location.href]);
-      window._paq.push(["trackPageView"]);
-    } else {
-      alert("Please zoom in to start");
+    document.querySelector("#mesh")?.remove();
+    [canvas, destroyPromise] = await createCanvasWithMesh(
+      map,
+      window.innerWidth,
+      window.innerHeight
+    );
+    if (!canvas) {
+      alert("No buildings found in this area");
+      return;
     }
+    canvas.id = "mesh";
+    document.body.appendChild(canvas);
+    isMeshActive.value = true;
+    window._paq.push(["setCustomUrl", window.location.href]);
+    window._paq.push(["trackPageView"]);
   }
 }
 document.onkeyup = (e) => {
@@ -408,7 +418,8 @@ fetch(`${tile_url}public.data_building.json`)
 
 <style lang="scss">
 :root {
-  --primary-color: rgb(220, 0, 0);
+  --primary-color: rgb(20, 20, 20);
+  --primary-color: rgb(200, 20, 20);
 }
 #map,
 #mesh {
@@ -440,7 +451,7 @@ fetch(`${tile_url}public.data_building.json`)
   }
 }
 
-.btm-nav {
+.choropleth-ctl {
   position: fixed;
   bottom: 2em;
   right: 1em;
@@ -476,64 +487,102 @@ fetch(`${tile_url}public.data_building.json`)
   }
 }
 
-#toggleMesh {
+.mesh-ctl {
+  --size-disabled: 2.7em;
+  --size-enabled: 3.8em;
+  --size-circle: 3em;
+  --size-circle-active: 1.5em;
   font-size: 1em;
   position: fixed;
   bottom: 2em;
   left: calc(50%);
   transform: translateX(-50%);
-  width: 2.7em;
-  height: 2.7em;
+  width: 8em;
+  height: var(--size-disabled);
   border-radius: 99px;
   border: 2px solid var(--primary-color);
-  z-index: 1000;
   background-color: transparent;
-  transition: all 0.7s;
+  transition: all 0.5s;
   cursor: pointer;
-  &::after {
+  border-color: rgb(128, 128, 128);
+  background-color: rgba(255, 255, 255, 0.5);
+  z-index: 1000;
+
+  .circle {
+    overflow: hidden;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    content: "";
     border-radius: 50%;
-    width: 2em;
-    height: 2em;
-    transition: all 0.3s;
-    background-color: var(--primary-color);
+    opacity: 0;
+    width: 1em;
+    height: 1em;
+    transition: all 0.4s;
   }
-
-  span {
+  .text-enabled,
+  .text-disabled {
     position: absolute;
-    left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
     white-space: nowrap;
     pointer-events: none;
-    transition: all 0.3s;
-    opacity: 0;
+    transition: opacity 0.5s;
     line-height: 1;
+    opacity: 0;
     font-size: 0.8rem;
+  }
+  .text-disabled {
+    left: 50%;
     color: rgb(73, 73, 73);
+    opacity: 1;
   }
-  &.disabled {
-    filter: saturate(0);
-    border-color: rgb(128, 128, 128);
-    background-color: rgba(255, 255, 255, 0.5);
-    width: 8em;
-    &::after {
-      opacity: 0;
-      width: 1em;
-      height: 1em;
+  .text-enabled {
+    left: 0;
+    transform: translateX(100%) translateY(-50%);
+    color: white;
+  }
+  // ------------------------------
+
+  &.enabled {
+    border-color: var(--primary-color);
+    border-width: 3px;
+    width: var(--size-enabled);
+    height: var(--size-enabled);
+    bottom: calc(2em - (var(--size-enabled) - var(--size-disabled)) / 2);
+    @keyframes untouched {
+      0% {
+        transform: translateX(100%) translateY(-50%);
+      }
+      50% {
+        transform: translateX(-100%) translateY(-50%);
+      }
+      100% {
+        transform: translateX(-100%) translateY(-50%);
+      }
     }
-    span {
+    &.untouched .text-enabled {
       opacity: 1;
+      animation: untouched 8s infinite linear;
+      animation-delay: 10s;
+    }
+    .circle {
+      opacity: 1;
+      width: var(--size-circle);
+      height: var(--size-circle);
+      background-color: var(--primary-color);
+    }
+    .text-disabled {
+      opacity: 0;
     }
   }
-  &.active::after {
-    border-radius: 4px;
-    width: 1.2em;
-    height: 1.2em;
+  // ------------------------------
+  &.active {
+    .circle {
+      border-radius: 4px;
+      width: var(--size-circle-active);
+      height: var(--size-circle-active);
+    }
   }
 }
 </style>
