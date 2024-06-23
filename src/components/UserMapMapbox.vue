@@ -25,7 +25,9 @@
   >
     <div class="text-disabled">zoom in to start</div>
     <div class="circle">
-      <span class="text-enabled">click here to start</span>
+      <span class="text-enabled"
+        >click here to interact with the buildings</span
+      >
     </div>
   </button>
 </template>
@@ -554,7 +556,7 @@ fetch(`${tile_url}public.data_building.json`)
       0% {
         transform: translateX(100%) translateY(-50%);
       }
-      50% {
+      75% {
         transform: translateX(-100%) translateY(-50%);
       }
       100% {
@@ -563,7 +565,7 @@ fetch(`${tile_url}public.data_building.json`)
     }
     &.untouched .text-enabled {
       opacity: 1;
-      animation: untouched 8s infinite linear;
+      animation: untouched 10s infinite linear;
       animation-delay: 10s;
     }
     .circle {
