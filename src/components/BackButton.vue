@@ -1,7 +1,7 @@
 <template>
   <div>
     <RouterLink to="/" class="back" title="Back to home">
-      <img src="../assets/left-arrow.svg" />
+      <img src="../assets/left-arrow.svg?url" />
     </RouterLink>
   </div>
 </template>
