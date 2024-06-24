@@ -1,4 +1,5 @@
 <template>
+  <BackButton />
   <div class="container">
     <figure v-for="item in items" :key="item">
       <component :is="getSvg(item.en)" />
@@ -10,6 +11,7 @@
 </template>
 
 <script setup>
+import BackButton from "./components/BackButton.vue";
 import { defineAsyncComponent, onUnmounted } from "vue";
 import items from "./assets/top-ten/items.json";
 
