@@ -18,18 +18,16 @@ export function createCanvasWithMesh(map, width, height) {
     );
   }
 
-  // Outer rings in screen pixels, simplified to 1px and without slivers below 1px².
+  // Rings ([outer, ...holes]) in screen pixels, simplified to 1px, dropping anything below 1px².
+  const toPixels = (ring) => simplify(ring.slice(0, -1).map((c) => map.project(c)), 1);
+  const isSolid = (v) => v.length > 2 && Vertices.area(v) > 1;
   const shapes = [...buildings.values()]
     .flatMap(({ geometry }) =>
       geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates
     )
-    .map(([ring]) =>
-      simplify(
-        ring.slice(0, -1).map((c) => map.project(c)),
-        1
-      )
-    )
-    .filter((v) => v.length > 2 && Vertices.area(v) > 1);
+    .map((polygon) => polygon.map(toPixels))
+    .filter(([outer]) => isSolid(outer))
+    .map(([outer, ...holes]) => [outer, ...holes.filter(isSolid)]);
 
   if (shapes.length === 0) return null;
 

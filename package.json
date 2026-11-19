@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@turf/union": "^7.4.0",
+    "earcut": "^3.2.4",
     "maplibre-gl": "^4.4.1",
     "matter-js": "^0.19.0",
     "normalize.css": "^8.0.1",

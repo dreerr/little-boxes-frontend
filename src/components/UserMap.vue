@@ -90,6 +90,7 @@ function showPopup(e) {
 }
 
 function toggleMesh() {
+  if (!map.getLayer("buildings-fill")) return; // style still loading
   if (map.getZoom() < MIN_ZOOM) return alert("Please zoom in to start");
   isUntouched.value = false;
   if (isMeshActive.value) {
@@ -107,7 +108,10 @@ function toggleMesh() {
   window._paq?.push(["trackPageView"]);
 }
 
-const onKeyUp = (e) => e.key === "m" && toggleMesh();
+function onKeyUp(e) {
+  if (e.key === "m") toggleMesh();
+  if (e.key === "h") document.body.classList.toggle("hide-ui");
+}
 
 onMounted(() => {
   map = new maplibregl.Map({
@@ -170,6 +174,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener("keyup", onKeyUp);
+  document.body.classList.remove("hide-ui");
   destroyMesh?.();
   map.remove();
 });
@@ -179,6 +184,16 @@ onUnmounted(() => {
 :root {
   --primary-color: rgb(20, 20, 20);
   --primary-color: rgb(200, 20, 20);
+}
+// "h" toggles all controls, e.g. for the installation or screenshots.
+.hide-ui {
+  .back,
+  .mesh-ctl,
+  .choropleth-ctl,
+  #legend,
+  .maplibregl-control-container {
+    display: none;
+  }
 }
 #map,
 #mesh {

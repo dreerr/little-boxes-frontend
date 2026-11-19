@@ -1,5 +1,6 @@
 import {
   Bodies,
+  Body,
   Common,
   Composite,
   Engine,
@@ -10,6 +11,7 @@ import {
   Vertices,
 } from "matter-js";
 import decomp from "poly-decomp";
+import earcut from "earcut";
 
 const BORDER = 50;
 const FRAME_BUDGET_MS = 8;
@@ -90,11 +92,9 @@ export function loadMatterJs(canvas, width, height, shapes, doDecomp) {
   (async () => {
     let batch = [];
     let deadline = performance.now() + FRAME_BUDGET_MS;
-    for (const shape of shapes) {
+    for (const rings of shapes) {
       if (stopped) return;
-      const { x, y } = Vertices.centre(shape);
-      // Start asleep: the city holds still (and costs nothing) until something touches it.
-      const body = Bodies.fromVertices(x, y, [shape], { isSleeping: true }, false, 0, 0, 0);
+      const body = rings.length > 1 ? fromRingsWithHoles(rings) : fromOutline(rings[0]);
       if (body) batch.push(body);
       if (performance.now() > deadline) {
         Composite.add(engine.world, batch);
@@ -111,6 +111,27 @@ export function loadMatterJs(canvas, width, height, shapes, doDecomp) {
     attractors = [...bodies].sort((a, b) => b.area - a.area).slice(0, 5);
     Events.on(engine, "afterUpdate", attract);
   })();
+
+  // Bodies start asleep: the city holds still (and costs nothing) until something touches it.
+  function fromOutline(outline) {
+    const { x, y } = Vertices.centre(outline);
+    return Bodies.fromVertices(x, y, [outline], { isSleeping: true }, false, 0, 0, 0);
+  }
+
+  // poly-decomp can't do holes (courtyards), so triangulate those and glue the triangles together.
+  function fromRingsWithHoles(rings) {
+    const points = rings.flat();
+    let start = 0;
+    const holeStarts = rings.slice(0, -1).map((ring) => (start += ring.length));
+    const index = earcut(points.flatMap((p) => [p.x, p.y]), holeStarts);
+    const parts = [];
+    for (let i = 0; i < index.length; i += 3) {
+      const triangle = [points[index[i]], points[index[i + 1]], points[index[i + 2]]];
+      if (Vertices.area(triangle) < 0.01) continue; // zero-area slivers break the mass
+      parts.push(Body.create({ position: Vertices.centre(triangle), vertices: triangle }));
+    }
+    return parts.length ? Body.create({ parts, isSleeping: true }) : null;
+  }
 
   return function destroy() {
     stopped = true;
