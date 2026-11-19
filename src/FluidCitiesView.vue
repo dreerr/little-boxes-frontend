@@ -1,11 +1,9 @@
 <template>
   <BackButton />
-  <UserMapMapbox />
+  <UserMap />
 </template>
 
 <script setup>
 import BackButton from "./components/BackButton.vue";
-import UserMapMapbox from "./components/UserMapMapbox.vue";
+import UserMap from "./components/UserMap.vue";
 </script>
-
-<style lang="scss" scoped></style>

@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            "mapbox-gl": ["mapbox-gl"],
+            "maplibre-gl": ["maplibre-gl"],
             "matter-js": ["matter-js"],
           },
         },

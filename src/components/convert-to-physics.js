@@ -1,212 +1,124 @@
 import {
   Bodies,
-  Body,
+  Common,
   Composite,
   Engine,
   Events,
   Mouse,
   MouseConstraint,
-  Render,
   Runner,
   Vertices,
-  World,
-  Common,
 } from "matter-js";
 import decomp from "poly-decomp";
 
-Common.setDecomp(decomp);
-Common.setDecomp(null);
+const BORDER = 50;
+const FRAME_BUDGET_MS = 8;
+const PULL = 0.000001 * (1000 / 60) ** 2; // same strength as the former applyForce
 
-let engine;
+// Starts the simulation on `canvas` and returns a function that stops it and removes the canvas.
+export function loadMatterJs(canvas, width, height, shapes, doDecomp) {
+  Common.setDecomp(doDecomp ? decomp : null);
 
-export async function loadMatterJs(
-  canvas,
-  width,
-  height,
-  collection,
-  doDecomp
-) {
-  if (doDecomp) {
-    Common.setDecomp(decomp);
-  } else {
-    Common.setDecomp(null);
-  }
-
-  engine = Engine.create({
+  const engine = Engine.create({
     gravity: { x: 0, y: 0 },
+    positionIterations: 6,
+    velocityIterations: 4,
+    // Resting buildings sleep and cost (almost) nothing; a drag wakes only the ones it touches.
+    enableSleeping: true,
   });
-  const render = Render.create({
-    canvas: canvas,
-    engine: engine,
-    options: {
-      width: width,
-      height: height,
-      pixelRatio: "auto",
-      wireframes: false,
-      background: "white", // Set the canvas background to white
-    },
-  });
+  const runner = Runner.create();
+  Runner.run(runner, engine);
 
-  Render.run(render);
-  Runner.run(Runner.create(), engine);
-
-  // Create borders
-  const borderThickness = 50;
-  const createBorders = () => {
-    return [
-      Bodies.rectangle(
-        width / 2,
-        -borderThickness / 2,
-        width,
-        borderThickness,
-        {
-          isStatic: true,
-          label: "border",
-        }
-      ), // Top
-      Bodies.rectangle(
-        width / 2,
-        height + borderThickness / 2,
-        width,
-        borderThickness,
-        { isStatic: true, label: "border" }
-      ), // Bottom
-      Bodies.rectangle(
-        -borderThickness / 2,
-        height / 2,
-        borderThickness,
-        height,
-        { isStatic: true, label: "border" }
-      ), // Left
-      Bodies.rectangle(
-        width + borderThickness / 2,
-        height / 2,
-        borderThickness,
-        height,
-        { isStatic: true, label: "border" }
-      ), // Right
-    ];
-  };
-
-  // Calculate centroid of vertices
-  function calculateCentroid(vertices) {
-    let centroid = { x: 0, y: 0 };
-    vertices.flat().forEach((vertex) => {
-      centroid.x += vertex.x;
-      centroid.y += vertex.y;
-    });
-    centroid.x /= vertices.flat().length;
-    centroid.y /= vertices.flat().length;
-    return centroid;
-  }
-
-  // Create js body from vertices
-  function createBody(item) {
-    const centroid = calculateCentroid(item.vertices);
-    const body = Bodies.fromVertices(
-      centroid.x,
-      centroid.y,
-      [item.vertices],
-      {
-        render: {
-          fillStyle: "rgba(0,0,0,1)",
-        },
-      },
-      false,
-      0.0,
-      0.0,
-      0.0
-    );
-    if (!body) {
-      console.warn("Failed to create body from vertice", item);
-    } else {
-      try {
-        Composite.add(engine.world, body);
-      } catch (error) {
-        console.error("Failed to create body from vertice", item, error);
-      }
-    }
-  }
-
-  World.clear(engine.world);
-  Engine.clear(engine);
-  let borders = createBorders();
-  World.add(engine.world, borders);
-
-  engine.positionIterations = 6; // Reduced iterations
-  engine.velocityIterations = 4; // Reduced iterations
-  Engine.update(engine, 1000 / 60);
-
-  // Make shapes draggable
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const ctx = canvas.getContext("2d");
   const mouse = Mouse.create(canvas);
-  const mouseConstraint = MouseConstraint.create(engine, {
-    mouse: mouse,
-    constraint: {
-      stiffness: 0.2,
-      render: {
-        visible: false,
-      },
-    },
-  });
-  World.add(engine.world, mouseConstraint);
-  // Process paths in batches
-  for (let i = 0; i < collection.length; i += 50) {
-    // Reduced batch size
-    const batch = collection.slice(i, i + 50);
-    batch.forEach((item) => {
-      try {
-        if (item.vertices.length > 2) {
-          createBody(item);
-        } else {
-          console.warn("Insufficient vertices to form a body:", item);
-        }
-      } catch (error) {
-        console.error("Error processing path:", item, error);
+  mouse.pixelRatio = dpr;
+
+  Composite.add(engine.world, [
+    Bodies.rectangle(width / 2, -BORDER / 2, width, BORDER, { isStatic: true }),
+    Bodies.rectangle(width / 2, height + BORDER / 2, width, BORDER, { isStatic: true }),
+    Bodies.rectangle(-BORDER / 2, height / 2, BORDER, height, { isStatic: true }),
+    Bodies.rectangle(width + BORDER / 2, height / 2, BORDER, height, { isStatic: true }),
+    MouseConstraint.create(engine, { mouse, constraint: { stiffness: 0.2 } }),
+  ]);
+
+  const bodies = [];
+  let attractors = [];
+  let stopped = false;
+  let frame;
+
+  // All buildings in one path with one fill: about half the cost of Matter's per-part Render.
+  (function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, width, height);
+    ctx.beginPath();
+    for (const { parts } of bodies) {
+      // A compound body's first part is its hull; draw only the real pieces.
+      for (let i = parts.length > 1 ? 1 : 0; i < parts.length; i++) {
+        const v = parts[i].vertices;
+        ctx.moveTo(v[0].x, v[0].y);
+        for (let j = 1; j < v.length; j++) ctx.lineTo(v[j].x, v[j].y);
       }
-    });
-    await new Promise(requestAnimationFrame); // Yield to allow UI update
-  }
-  Events.on(engine, "afterUpdate", applyAttraction);
-  return function destroy() {
-    Events.off(engine, "afterUpdate");
-    World.clear(engine.world);
-    Engine.clear(engine);
-    Render.stop(render);
-    render.canvas.remove();
-    render.canvas = null;
-    render.context = null;
-    render.textures = {};
-    engine = null;
-  };
-}
+    }
+    ctx.fillStyle = "black";
+    ctx.fill();
+    frame = requestAnimationFrame(draw);
+  })();
 
-function applyAttraction() {
-  const bodies = Composite.allBodies(engine.world).filter(
-    (body) => body.label !== "border"
-  );
-
-  // Calculate areas and sort bodies by area
-  const bodyAreas = bodies
-    .map((body) => ({
-      body,
-      area: Vertices.area(body.vertices),
-    }))
-    .sort((a, b) => b.area - a.area);
-
-  // Get the five largest bodies
-  const largestBodies = bodyAreas.slice(0, 5).map((entry) => entry.body);
-
-  // Apply attraction from the five largest bodies to all other bodies
-  for (const bodyA of largestBodies) {
-    for (const bodyB of bodies) {
-      if (bodyA !== bodyB) {
-        const dx = bodyA.position.x - bodyB.position.x;
-        const dy = bodyA.position.y - bodyB.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const forceMagnitude = (0.000001 * bodyA.mass) / (distance * distance);
-        const force = { x: dx * forceMagnitude, y: dy * forceMagnitude };
-        Body.applyForce(bodyB, bodyB.position, force);
+  // The five largest buildings pull all awake buildings towards them.
+  function attract() {
+    for (const b of bodies) {
+      if (b.isSleeping) continue;
+      for (const a of attractors) {
+        if (a === b) continue;
+        const dx = a.position.x - b.position.x;
+        const dy = a.position.y - b.position.y;
+        const f = (PULL * a.mass) / (b.mass * (dx * dx + dy * dy));
+        // Nudge velocity via positionPrev: a Body.applyForce would keep the body awake forever.
+        b.positionPrev.x -= dx * f;
+        b.positionPrev.y -= dy * f;
       }
     }
   }
+
+  // Add bodies in time-sliced batches so the page stays responsive while they pop in.
+  (async () => {
+    let batch = [];
+    let deadline = performance.now() + FRAME_BUDGET_MS;
+    for (const shape of shapes) {
+      if (stopped) return;
+      const { x, y } = Vertices.centre(shape);
+      // Start asleep: the city holds still (and costs nothing) until something touches it.
+      const body = Bodies.fromVertices(x, y, [shape], { isSleeping: true }, false, 0, 0, 0);
+      if (body) batch.push(body);
+      if (performance.now() > deadline) {
+        Composite.add(engine.world, batch);
+        bodies.push(...batch);
+        batch = [];
+        await new Promise(requestAnimationFrame);
+        deadline = performance.now() + FRAME_BUDGET_MS;
+      }
+    }
+    if (stopped) return;
+    Composite.add(engine.world, batch);
+    bodies.push(...batch);
+    // Areas never change, so pick the attractors once instead of every frame.
+    attractors = [...bodies].sort((a, b) => b.area - a.area).slice(0, 5);
+    Events.on(engine, "afterUpdate", attract);
+  })();
+
+  return function destroy() {
+    stopped = true;
+    cancelAnimationFrame(frame);
+    Events.off(engine);
+    Runner.stop(runner);
+    Composite.clear(engine.world);
+    Engine.clear(engine);
+    canvas.remove();
+  };
 }
