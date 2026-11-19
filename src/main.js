@@ -1,18 +1,18 @@
 import { createApp } from "vue";
 import { createWebHistory, createRouter } from "vue-router";
-import VueMatomo from "vue-matomo";
+import VueMatomoModule from "vue-matomo";
 
 import "normalize.css";
 import "./style.css";
 import App from "./App.vue";
 
 import HomeView from "./HomeView.vue";
-import FluidCitiesView from "./FluidCitiesView.vue";
 import TopTenView from "./TopTenView.vue";
 
 const routes = [
   { path: "/", component: HomeView },
-  { path: "/fluid-cities/", component: FluidCitiesView },
+  // Lazy: keeps MapLibre and Matter out of the home and top-ten pages.
+  { path: "/fluid-cities/", component: () => import("./FluidCitiesView.vue") },
   { path: "/top-ten/", component: TopTenView },
 ];
 
@@ -20,6 +20,9 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+
+// vue-matomo is a webpack UMD bundle; with Vite 8's Node-style CJS interop the plugin sits on .default.
+const VueMatomo = VueMatomoModule.default ?? VueMatomoModule;
 
 const app = createApp(App);
 app.use(router);

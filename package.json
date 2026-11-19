@@ -11,7 +11,7 @@
   "dependencies": {
     "@turf/union": "^7.4.0",
     "earcut": "^3.2.4",
-    "maplibre-gl": "^4.4.1",
+    "maplibre-gl": "^6.19.0",
     "matter-js": "^0.19.0",
     "normalize.css": "^8.0.1",
     "pmtiles": "^4.5.0",
@@ -23,15 +23,12 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.5.0",
-    "@vheemstra/vite-plugin-imagemin": "^2.0.0",
-    "@vitejs/plugin-vue": "^5.0.5",
+    "@vitejs/plugin-vue": "^6.0.11",
     "eslint": "^9.5.0",
     "eslint-plugin-vue": "^9.26.0",
     "globals": "^15.6.0",
-    "imagemin-avif": "^0.1.6",
-    "imagemin-mozjpeg": "^10.0.0",
     "sass": "^1.77.6",
-    "vite": "^5.3.1",
+    "vite": "^8.3.8",
     "vite-plugin-favicons-inject": "^2.2.0",
     "vite-plugin-open-graph": "^2.0.4",
     "vite-svg-loader": "^5.1.0"

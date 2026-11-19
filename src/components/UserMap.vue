@@ -44,9 +44,10 @@
 </template>
 
 <script setup>
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import "maplibre-gl/dist/maplibre-gl.css";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { choropleth, PMTILES_URL } from "../constants.js";
 import { createCanvasWithMesh } from "./convert-to-mesh.js";
@@ -62,6 +63,8 @@ const POPUP_FIELDS = [
   "geometry_source",
 ];
 
+// MapLibre 6 builds its worker URL at runtime, which Vite cannot see; hand it the emitted .js file.
+maplibregl.setWorkerUrl(workerUrl);
 maplibregl.addProtocol("pmtiles", new Protocol().tile);
 
 const isMeshActive = ref(false);

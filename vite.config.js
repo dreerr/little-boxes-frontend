@@ -4,9 +4,6 @@ import vue from "@vitejs/plugin-vue";
 import svgLoader from "vite-svg-loader";
 import ogPlugin from "vite-plugin-open-graph";
 import vitePluginFaviconsInject from "vite-plugin-favicons-inject";
-import viteImagemin from "@vheemstra/vite-plugin-imagemin";
-import imageminMozjpeg from "imagemin-mozjpeg";
-import makeAvif from "imagemin-avif";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -43,23 +40,15 @@ export default defineConfig(({ mode }) => {
           description: env.VITE_APP_DESCRIPTION,
         },
       }),
-      viteImagemin({
-        plugins: {
-          jpg: imageminMozjpeg(),
-        },
-        makeAvif: {
-          plugins: {
-            jpg: makeAvif(),
-          },
-        },
-      }),
     ],
     build: {
-      rollupOptions: {
+      rolldownOptions: {
         output: {
-          manualChunks: {
-            "maplibre-gl": ["maplibre-gl"],
-            "matter-js": ["matter-js"],
+          codeSplitting: {
+            groups: [
+              { name: "maplibre-gl", test: /node_modules[\\/]maplibre-gl/ },
+              { name: "matter-js", test: /node_modules[\\/]matter-js/ },
+            ],
           },
         },
       },
